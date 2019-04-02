@@ -19,7 +19,6 @@ explicit MainWindow(QWidget *parent = nullptr);
 
 private:
 Ui::MainWindow *ui;
-ItemListModel* m_itemListModel;
 };
 
 #endif // MAINWINDOW_H

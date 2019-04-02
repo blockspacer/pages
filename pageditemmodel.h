@@ -22,6 +22,7 @@ Q_DECLARE_METATYPE(Item*)
 
 class ItemModel : public QAbstractListModel
 {
+    Q_OBJECT
 public:
   /*enum class Roles {
     NameRole = Qt::UserRole + 1
@@ -35,7 +36,7 @@ public:
     , Total
   };
 
-  ItemModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
+  explicit ItemModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
   }
 
   virtual ~ItemModel() {
@@ -57,17 +58,17 @@ public:
     m_item.surname = sString;
   }
 
-  virtual int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
     return 1;
   }
 
-  virtual int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
     return static_cast<int>(Columns::Total);
   }
 
-  virtual bool setData(const QModelIndex &index, const QVariant &value, int role) override
+  bool setData(const QModelIndex &index, const QVariant &value, int role) override
   {
-    //qDebug() << "setData PersonsModel " << value << value.toString();
+    qDebug() << "setData PersonsModel " << value << value.toString();
 
     if (!index.isValid())
       return false;
@@ -86,8 +87,8 @@ public:
     return true;
   }
 
-  virtual QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
-    //qDebug() << "data" << index.column() << role;
+  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
+    qDebug() << "data" << index.column() << role;
 
     if (!index.isValid())
       return false;
@@ -109,16 +110,20 @@ private:
   Item m_item;
 };
 
+//Q_DECLARE_METATYPE(ItemModel)
+Q_DECLARE_METATYPE(ItemModel*)
+
 class ItemMapper : public QDataWidgetMapper
 {
+    Q_OBJECT
 public:
-  ItemMapper(QObject *pParent = nullptr) : QDataWidgetMapper(pParent)
+  explicit ItemMapper(QObject *pParent = nullptr) : QDataWidgetMapper(pParent)
   {
     m_model = new ItemModel(this);
     setModel(m_model);
   }
   virtual ~ItemMapper()
-  { }
+  {}
 
   ItemModel* getModel() {
     return m_model;
@@ -161,10 +166,15 @@ public:
 private:
   ItemModel* m_model;
 };
+
+//Q_DECLARE_METATYPE(ItemMapper)
+Q_DECLARE_METATYPE(ItemMapper*)
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class ItemListModel : public QAbstractListModel
 {
+    Q_OBJECT
 public:
   enum class Roles {
     Name = Qt::UserRole + 1
@@ -177,30 +187,32 @@ public:
     , Total
   };
 
-  ItemListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
+  explicit ItemListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
   }
 
   virtual ~ItemListModel() {
   }
 
-  virtual int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
     return m_items.size();
   }
 
-  virtual int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
     return static_cast<int>(Columns::Total);
   }
 
-  virtual bool setData(const QModelIndex &index, const QVariant &value, int role) override
+  bool setData(const QModelIndex &index, const QVariant &value, int role) override
   {
     //qDebug() << "setData PersonsModel " << value << value.toString();
 
     if (!index.isValid())
       return false;
 
-    ItemMapper* item = m_items.at(index.row());
+    //ItemMapper* item = m_items.at(index.row());
 
-    switch(role)
+    ItemMapper* itemMapper = qvariant_cast<ItemMapper*>(value.value<QVariant>());
+
+    /*switch(role)
     {
       case static_cast<int>(Roles::Name):
         item->getModel()->setName(value.toString());
@@ -210,25 +222,30 @@ public:
         break;
     }
 
-    m_items.replace(index.row(), item);
+    m_items.replace(index.row(), item);*/
+
+    m_items.replace(index.row(), itemMapper);
 
     emit dataChanged(index, index);
     return true;
   }
 
-  virtual QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
+  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
     //qDebug() << "data" << index.column() << role;
 
     if (!index.isValid())
-      return false;
+      return QVariant();
 
     ItemMapper* item = m_items.at(index.row());
 
     if (!item)
-      return false;
+      return QVariant();
 
     QVariant result;
-    switch(role)
+
+    result = QVariant::fromValue(item);
+
+    /*switch(role)
     {
       case static_cast<int>(Roles::Name):
         result = item->getModel()->getName();
@@ -236,7 +253,7 @@ public:
       case static_cast<int>(Roles::Surname):
         result = item->getModel()->getName();
         break;
-    }
+    }*/
     return result;
   }
 
@@ -247,6 +264,161 @@ public:
 private:
   QList<ItemMapper*> m_items;
 };
+
+//Q_DECLARE_METATYPE(ItemListModel)
+Q_DECLARE_METATYPE(ItemListModel*)
+
+class PagedItemModel : public QAbstractListModel
+{
+    Q_OBJECT
+public:
+  /*enum class Roles {
+    Name = Qt::UserRole + 1
+    , Surname
+    , Total
+  };*/
+
+  enum class Columns {
+    Page = 0
+    , Total
+  };
+
+  explicit PagedItemModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
+  }
+
+  virtual ~PagedItemModel() {
+  }
+
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+    return m_pages.size();
+  }
+
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+    return static_cast<int>(Columns::Total);
+  }
+
+  bool setData(const QModelIndex &index, const QVariant &value, int role) override
+  {
+    //qDebug() << "setData PersonsModel " << value << value.toString();
+
+    if (!index.isValid())
+      return false;
+
+    //ItemListModel* item = m_pages.at(index.row());
+
+    ItemListModel* item = qvariant_cast<ItemListModel*>(value.value<QVariant>());
+
+    /*switch(role)
+    {
+      case static_cast<int>(Roles::Name):
+        item->getModel()->setName(value.toString());
+        break;
+      case static_cast<int>(Roles::Surname):
+        item->getModel()->setSurname(value.toString());
+        break;
+    }*/
+
+    m_pages.replace(index.row(), item);
+
+    emit dataChanged(index, index);
+    return true;
+  }
+
+  QVariant data(const QModelIndex &index, int role) const override {
+    //qDebug() << "data" << index.column() << role;
+
+    if (!index.isValid())
+      return false;
+
+    QVariant result;
+
+    ItemListModel* item = m_pages.at(index.row());
+
+    if (!item)
+      return false;
+
+    /*switch(role)
+    {
+      case static_cast<int>(Roles::Name):
+        result = item->getModel()->getName();
+        break;
+      case static_cast<int>(Roles::Surname):
+        result = item->getModel()->getName();
+        break;
+    }*/
+
+    result = QVariant::fromValue(item);
+
+    return result;
+  }
+
+  void addPage(ItemListModel* page) {
+    m_pages.push_back(page);
+  }
+
+private:
+  QList<ItemListModel*> m_pages;
+};
+
+//Q_DECLARE_METATYPE(PagedItemModel)
+Q_DECLARE_METATYPE(PagedItemModel*)
+
+class PagedItemMapper : public QDataWidgetMapper
+{
+    Q_OBJECT
+public:
+  explicit PagedItemMapper(QObject *pParent = nullptr) : QDataWidgetMapper(pParent)
+  {
+    //m_model = new PagedItemModel(this);
+    //setModel(m_model);
+  }
+  virtual ~PagedItemMapper()
+  { }
+
+  //PagedItemModel* getModel() {
+  //  return m_model;
+  //}
+
+  /*void AddNameMapping(QLineEdit *pLineEdit)
+  {
+    addMapping(pLineEdit, 0);
+    this->setCurrentIndex(0);
+  }
+
+  void AddSurnameMapping(QLineEdit *pLineEdit)
+  {
+    addMapping(pLineEdit, 1);
+    this->setCurrentIndex(0);
+  }
+
+  QString getName()
+  {
+    return static_cast<ItemModel *>(model())->getName();
+  }
+
+  void setName(QString sString)
+  {
+    static_cast<ItemModel *>(model())->setName(sString);
+    setCurrentIndex(0);
+  }
+
+  QString getSurname()
+  {
+    return static_cast<ItemModel *>(model())->getSurname();
+  }
+
+  void setSurname(QString sString)
+  {
+    static_cast<ItemModel *>(model())->setSurname(sString);
+    setCurrentIndex(0);
+  }*/
+
+private:
+  //PagedItemModel* m_model;
+};
+
+//Q_DECLARE_METATYPE(PagedItemMapper)
+Q_DECLARE_METATYPE(PagedItemMapper*)
 
 /*class PagedModel : public QAbstractListModel
 {
