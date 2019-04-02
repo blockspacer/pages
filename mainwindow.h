@@ -19,7 +19,7 @@ explicit MainWindow(QWidget *parent = nullptr);
 
 private:
 Ui::MainWindow *ui;
-ItemMapper* m_mapper;
+ItemListModel* m_itemListModel;
 };
 
 #endif // MAINWINDOW_H

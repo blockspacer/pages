@@ -28,15 +28,18 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     pagedmodel.cpp \
-    pageditemmodel.cpp
+    pageditemmodel.cpp \
+    item_widget.cpp
 
 HEADERS += \
         mainwindow.h \
     pagedmodel.h \
-    pageditemmodel.h
+    pageditemmodel.h \
+    item_widget.h
 
 FORMS += \
-        mainwindow.ui
+        mainwindow.ui \
+    item_widget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
