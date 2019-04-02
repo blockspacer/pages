@@ -203,7 +203,7 @@ public:
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) override
   {
-    //qDebug() << "setData PersonsModel " << value << value.toString();
+    qDebug() << "setData ItemListModel " << value << value.toString();
 
     if (!index.isValid())
       return false;
@@ -299,7 +299,7 @@ public:
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) override
   {
-    //qDebug() << "setData PersonsModel " << value << value.toString();
+    qDebug() << "setData PagedItemModel " << value << value.toString();
 
     if (!index.isValid())
       return false;

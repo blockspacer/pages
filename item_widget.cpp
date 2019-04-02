@@ -17,6 +17,11 @@ void ItemWidget::setMappings() {
   m_mapper->addMapping(m_ui->surnameLineEdit, 1);
 }
 
+void ItemWidget::removeMappings() {
+  m_mapper->removeMapping(m_ui->nameLineEdit);
+  m_mapper->removeMapping(m_ui->surnameLineEdit);
+}
+
 ItemMapper* ItemWidget::getMapper() {
   return m_mapper;
 }

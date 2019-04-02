@@ -23,6 +23,7 @@ public:
 
   void setMappings();
 
+  void removeMappings();
 private:
   Ui::ItemWidget *m_ui;
   ItemMapper* m_mapper;

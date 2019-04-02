@@ -33,6 +33,8 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
     while ( ( item = ui->scrollVerticalLayout->takeAt( 0 ) ) != nullptr )
     {
         //delete item->widget();
+        ItemWidget* itemW = (ItemWidget*)item->widget();
+        itemW->removeMappings();
         item->widget()->deleteLater();
         //item->deleteLater();
         delete item;
