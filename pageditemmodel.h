@@ -769,6 +769,187 @@ private:
 Q_DECLARE_METATYPE(ItemTableProxyModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<ItemTableProxyModel>)
 
+/// \see https://doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
+class PagedItemTableProxyFilterModel : public QSortFilterProxyModel
+{
+    Q_OBJECT
+
+public slots:
+  void slotSourceModelChanged(void);
+  void slotDataChanged(const QModelIndex& first, const QModelIndex& last);
+  void slotRowsInserted(const QModelIndex& parent, int first, int last);
+  void slotRowsRemoved(const QModelIndex &parent, int start, int end);
+  void sourceReset();
+
+public:
+    explicit PagedItemTableProxyFilterModel(QObject *parent = nullptr): QSortFilterProxyModel(parent)
+    {
+      //connect(this, SIGNAL(rowsInserted(QModelIndex,int,int)), this, SLOT(slotRowsInserted(QModelIndex,int,int)));
+      //connect(this, SIGNAL(rowsRemoved(QModelIndex,int,int)), this, SLOT(slotRowsRemoved(QModelIndex,int,int)));
+
+      connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
+
+      /*connect(this, &QSortFilterProxyModel::rowsInserted, this, [this](const QModelIndex &parent, int first, int last, QPrivateSignal){
+        qDebug() << "rowsInserted";
+      });
+      connect(this, &QSortFilterProxyModel::rowsRemoved, this, [this](const QModelIndex &parent, int first, int last, QPrivateSignal){
+        qDebug() << "rowsInserted";
+      });*/
+    }
+
+    int filterMinSourceRowIndex() const { return minSourceRowIndex; }
+
+    void setFilterMinSourceRowIndex(const int rowNum){
+        minSourceRowIndex = rowNum;
+        invalidateFilter();
+    }
+
+    int filterMaxSourceRowIndex() const { return maxSourceRowIndex; }
+
+    void setFilterMaxSourceRowIndex(const int rowNum){
+        maxSourceRowIndex = rowNum;
+        invalidateFilter();
+    }
+
+    int getRowLimit() const { return rowLimit; }
+
+    void setRowLimit(const int num){
+        rowLimit = num;
+        //invalidateFilter();
+    }
+
+    /*int getLastRowSourceRowNum() const { return lastRowSourceRowNum; }
+
+    void setLastRowSourceRowNum(const int num){
+        lastRowSourceRowNum = num;
+        //invalidateFilter();
+    }
+
+    int updateLastRowSourceRowNum() {
+      int rowNum = rowCount() - 1;
+      auto idx = index(rowNum,0,QModelIndex());
+      qDebug() << "idx" << idx;
+      int result = mapToSource(idx).row();
+      setLastRowSourceRowNum(result);
+      return result;
+      //return QSortFilterProxyModel::rowCount();
+    }*/
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+      //return 2;
+      auto filteredRows = QSortFilterProxyModel::rowCount();
+
+      if (getRowLimit() >= 0)
+        return std::min(filteredRows, getRowLimit());
+
+      return filteredRows;
+      //return sourceModel()->rowCount();
+    }
+
+    int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+      return static_cast<int>(ItemModel::Columns::Total);
+    }
+
+protected:
+
+    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const Q_DECL_OVERRIDE {
+        //qDebug() << "lastRowSourceRowNum" << lastRowSourceRowNum;
+
+        /*if (sourceRow < 2) {
+          return false;
+        }
+        if (lastRowSourceRowNum > 0 && sourceRow < lastRowSourceRowNum) {
+          return false;
+        }*/
+
+        //if (prevFilteredMaxSourceRow)
+//qDebug() << "sourceRow" << columnCount();
+//qDebug() << "sourceParent" << sourceParent;
+//qDebug() << "filteredRowCount" << filteredRowCount;
+
+        const QModelIndex indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
+        const bool isNameFiltered = sourceModel()->data(indexName).toString().contains(filterRegExp());
+
+        const QModelIndex indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
+        const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(filterRegExp());
+
+        const bool anyFieldMatch = (isNameFiltered
+                //|| isSurnameFiltered
+                );
+                //this->cou
+//qDebug() << mapToSource(indexName);
+//qDebug() << rowCount(index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent));
+        //return anyFieldMatch && (this->it++) < 2;
+        //return sourceRow < 2;
+//qDebug() << this->checkIndex(indexName);
+//qDebug() << sourceModel()->rowCount();
+        //if(filterRegExp().pattern().isEmpty()) {
+        //  return rowInRange(sourceRow);
+        //}
+
+        //return anyFieldMatch && rowInRange(sourceRow);
+
+        //return anyFieldMatch && rowInRange(sourceRow);
+        //return anyFieldMatch && rowInRange(sourceRow);
+        return anyFieldMatch && rowInRange(sourceRow);
+    }
+
+    bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
+        return left.row() < right.row(); // sort from first added to last added
+
+        /*const QVariant leftData = sourceModel()->data(left);
+        const QVariant rightData = sourceModel()->data(right);
+
+        if (leftData.type() == QVariant::String) {
+            const QString leftString = leftData.toString();
+            const QString rightString = rightData.toString();
+            return QString::localeAwareCompare(leftString, rightString) < 0;
+        }*/
+
+        /*if (leftData.type() == QVariant::DateTime) {
+            return leftData.toDateTime() < rightData.toDateTime();
+        } else {
+            static const QRegularExpression emailPattern("[\\w\\.]*@[\\w\\.]*");
+
+            QString leftString = leftData.toString();
+            if (left.column() == 1) {
+                const QRegularExpressionMatch match = emailPattern.match(leftString);
+                if (match.hasMatch())
+                    leftString = match.captured(0);
+            }
+            QString rightString = rightData.toString();
+            if (right.column() == 1) {
+                const QRegularExpressionMatch match = emailPattern.match(rightString);
+                if (match.hasMatch())
+                    rightString = match.captured(0);
+            }
+
+            return QString::localeAwareCompare(leftString, rightString) < 0;
+        }*/
+
+        return false;
+    }
+
+private:
+    bool rowInRange(const int rowNum) const {
+        //if(minSourceRowIndex < 0 || maxSourceRowIndex < 0) {
+        //  return true;
+        //}
+
+        return (!isValidRow(minSourceRowIndex) || rowNum >= minSourceRowIndex)
+                && (!isValidRow(maxSourceRowIndex) || rowNum < maxSourceRowIndex);
+    }
+
+    bool isValidRow(const int rowNum) const {
+        return rowNum > 0 && rowNum < sourceModel()->rowCount();
+    }
+
+    int minSourceRowIndex = -1;
+    int maxSourceRowIndex = -1;
+    int rowLimit = -1;
+    //int lastRowSourceRowNum = -1;
+};
+
 class ItemPageListModel : public QAbstractListModel
 {
     Q_OBJECT

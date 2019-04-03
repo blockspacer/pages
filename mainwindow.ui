@@ -89,14 +89,14 @@
               <widget class="QLineEdit" name="searchEdit"/>
              </item>
              <item>
-              <widget class="QPushButton" name="pushButton">
+              <widget class="QPushButton" name="searchButton">
                <property name="text">
                 <string>search</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="pushButton_2">
+              <widget class="QPushButton" name="resetButton">
                <property name="text">
                 <string>reset</string>
                </property>

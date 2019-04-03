@@ -7,8 +7,6 @@
 
 static int kItemsPerPage = 2;
 
-static std::shared_ptr<ItemListModel> m_itemListModelCache;
-
 static bool isDisconnected = false;
 
 //static ItemListModel::Roles gFilterRole = ItemListModel::Roles::Name;
@@ -16,11 +14,14 @@ static bool isDisconnected = false;
 static std::shared_ptr<fetchedPageData> m_lastFetchedData;
 
 static QVector<Item> dummyRemoteItems {
-  Item{0, "0Anna", "Bork"},
-  Item{1, "1Boris", "Irman"},
-  Item{2, "2Byorn", "Makeyn"},
-  Item{3, "3Alli", "Keyn"},
+  Item{0, "0Atas", "Bork"},
+  Item{1, "1Viktor", "Irman"},
+  Item{2, "2Nadya", "Makeyn"},
+  Item{3, "3Alli", "Shtadt"},
   Item{4, "4Gabriel", "Abrim"},
+  Item{5, "5Gabram", "Bdhim"},
+  Item{6, "6Ludovik", "Manstein"},
+  Item{7, "7Klark", "Kent"},
 };
 
 static ItemModel* createItemModel(int guid, const QString& name, const QString& surname, QObject* parent = nullptr) {
@@ -69,6 +70,8 @@ static QList<Item> retrieveRemoteFiltered(const QString& filter/*, const ItemLis
     } else {
       // TODO
     }*/
+
+    filterItem = item.name; // TODO
 
     if(!filter.isEmpty() && !filterItem.contains(filter)) {
       //qDebug() << "skipped " << filterItem;
@@ -151,11 +154,16 @@ m_ui(new Ui::MainWindow)
   m_ui->setupUi(this);
 
   m_pagedItemMapper = std::make_shared<PagedItemMapper>();
+  m_filterItemTableProxyModel = new PagedItemTableProxyFilterModel();
+  m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
+  m_itemTableProxyModel = new ItemTableProxyModel();
+  m_itemListModelCache = std::make_shared<ItemListModel>();
+  m_pagedItemModel = new ItemPageListModel(m_pagedItemMapper.get());
+  m_itemTableProxyModel->setSourceModel(m_itemListModelCache.get());
 
   m_ui->prevButton->setEnabled(false);
   m_ui->nextButton->setEnabled(false);
 
-  m_itemListModelCache = std::make_shared<ItemListModel>();
 
   {
     ItemModel* itemModel = createItemModel(0, "_0Alie", "Bork");
@@ -184,6 +192,24 @@ m_ui(new Ui::MainWindow)
     m_itemListModelCache->pushBack(m_itemMapper);
   }
 
+  {
+    ItemModel* itemModel = createItemModel(3, "_3Hugo", "Geber");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  {
+    ItemModel* itemModel = createItemModel(4, "_4Borat", "Nagler");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
   std::shared_ptr<ItemListModel> m_itemListModelPage1 = std::make_shared<ItemListModel>();
   m_itemListModelPage1->pushBack(m_itemListModelCache->getItemAt(0));
   m_itemListModelPage1->pushBack(m_itemListModelCache->getItemAt(1));
@@ -192,7 +218,8 @@ m_ui(new Ui::MainWindow)
   m_itemListModelPage2->pushBack(m_itemListModelCache->getItemAt(2));
 
   //std::shared_ptr<PagedItemModel> m_pagedItemModel = std::make_shared<PagedItemModel>();
-  ItemPageListModel* m_pagedItemModel = new ItemPageListModel(m_pagedItemMapper.get());
+  m_pagedItemModel->pushBack(m_itemListModelPage1);
+  m_pagedItemModel->pushBack(m_itemListModelPage2);
   m_pagedItemModel->pushBack(m_itemListModelPage1);
   m_pagedItemModel->pushBack(m_itemListModelPage2);
 
@@ -246,6 +273,130 @@ m_ui(new Ui::MainWindow)
     qDebug() << "isDisconnected " << isDisconnected;
   });
 
+  connect(m_ui->searchButton, &QPushButton::clicked, [this]()
+  {
+    m_filterItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
+
+    if (!isDisconnected) {
+      m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, 0, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+    } else {
+      m_lastFetchedData = nullptr;
+    }
+
+    m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+
+    /*if (!isDisconnected) {
+      // TODO: fetch from remote
+      // TODO: clear old model cache
+      m_model->clear();
+      /// \note we reserved columns for custom data
+      int columsCount = static_cast<int>(Columns::TOTAL);
+      m_model->setColumnCount(columsCount);
+      //model->removeRows(0, model->rowCount());
+      //model->removeColumns(0, model->columnCount());
+      //qDebug() << "model->rowCount()" << model->rowCount();
+      //filterModel->clear();
+      m_filterModel->invalidate();
+
+      //mapper->addMapping(pw, static_cast<int>(Columns::PersonsPage), "m_PersonsPage");
+      // NOTE: reset page to 0
+      //fetchRemotePersons(0, kPersonsPerPage, ui->searchEdit->text());
+      //fetchRemotePersonsToModel(0, kPersonsPerPage);
+      //fetchRemotePersonsToModel(1, kPersonsPerPage);
+
+      //model->sort(0, Qt::AscendingOrder);
+
+      // TODO: filter param
+      m_lastFetchedData = fetchRemotePersonsToModel(0, kPersonsPerPage, m_ui->searchEdit->text(), filterRole);
+      //lastFetchedData = nullptr;
+
+      //qDebug()<<"lastFetchedData->recievedPersonsNum " << lastFetchedData->recievedPagePersonsNum;
+      //refreshPageWidgets(lastFetchedData);
+
+      //qDebug()<<"clicked" << ui->searchEdit->text();
+      m_filterModel->setFilterFixedString(m_ui->searchEdit->text());
+      //filterModel->filterRole();
+      //refreshPageWidgets(lastFetchedData);
+
+      //mapper->toFirst(); // refresh
+    } else {
+      //qDebug()<<"clicked" << ui->searchEdit->text();
+      m_filterModel->setFilterFixedString(m_ui->searchEdit->text());
+      //filterModel->filterRole();
+
+      // TODO: filter param
+      //m_lastFetchedData = fetchRemotePersonsToModel(0, kPersonsPerPage, "", filterRole);
+      m_lastFetchedData = nullptr;
+
+      //refreshPageWidgets(lastFetchedData);
+
+      //Q_ASSERT(model->rowCount()); // setCurrentIndex will not work with empty model
+      //mapper->setCurrentIndex(mapper->currentIndex()); // refresh
+      //refreshPageWidgets(lastFetchedData);
+    }
+
+    refreshPageWidgets(m_lastFetchedData);
+    // NOTE: empty mapper won't call currentIndexChanged
+    m_personsWidget->clearPage();
+    //model->dataChanged(QModelIndex(),QModelIndex());
+    if (!m_lastFetchedData || !m_lastFetchedData->recievedPagePersonsNum) {
+      qDebug() << "nothing to show";
+      m_ui->prevButton->setEnabled(false);
+      m_ui->nextButton->setEnabled(false);
+      return;
+    }*/
+
+    /*if (!isDisconnected) {
+      m_pagedItemMapper->toFirst();
+    } else {
+      m_pagedItemMapper->setCurrentIndex(m_pagedItemMapper->currentIndex());
+    }*/
+    m_pagedItemMapper->toFirst();
+
+  });
+
+  connect(m_ui->resetButton, &QPushButton::clicked, [this]()
+  {
+    m_ui->searchEdit->setText("");
+    m_filterItemTableProxyModel->setFilterFixedString("");
+
+    if (!isDisconnected) {
+      m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, 0, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+    } else {
+      m_lastFetchedData = nullptr;
+    }
+
+    m_filterItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
+    //m_pagedItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+
+     /*//qDebug()<<"clicked" << ui->searchEdit->text();
+     m_ui->searchEdit->setText("");
+     m_filterModel->setFilterFixedString("");
+     //filterModel->filterRole();
+
+     // TODO: filter param
+     m_lastFetchedData = fetchRemotePersonsToModel(0, kPersonsPerPage, "", filterRole);
+     //refreshPageWidgets(lastFetchedData);
+
+     Q_ASSERT(m_model->rowCount()); // setCurrentIndex will not work with empty model
+     //mapper->setCurrentIndex(mapper->currentIndex()); // refresh
+
+    refreshPageWidgets(m_lastFetchedData);
+    // NOTE: empty mapper won't call currentIndexChanged
+    m_personsWidget->clearPage();
+    //model->dataChanged(QModelIndex(),QModelIndex());
+    if (!m_lastFetchedData || !m_lastFetchedData->recievedPagePersonsNum) {
+      qDebug() << "nothing to show";
+      m_ui->prevButton->setEnabled(false);
+      m_ui->nextButton->setEnabled(false);
+      return;
+    }*/
+
+     m_pagedItemMapper->toFirst();
+  });
+
   connect(m_ui->nextButton, &QAbstractButton::clicked, [this]() {
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, m_pagedItemMapper->currentIndex() + 1, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
@@ -276,19 +427,41 @@ m_ui(new Ui::MainWindow)
 
   connect(m_pagedItemMapper.get(), &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
 
-  m_pagedItemMapper->toFirst();
+  //qDebug() << "m_itemTableProxyModel" << m_itemTableProxyModel->rowCount(QModelIndex());
 
-  ItemTableProxyModel* itemTableProxyModel = new ItemTableProxyModel();
-  itemTableProxyModel->setSourceModel(m_itemListModelCache.get());
+  m_filterItemTableProxyModel->setSourceModel(m_itemTableProxyModel);
+  //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
+  //m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage);
+  //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
+  //m_pagedItemTableProxyModel->setFilterRole(MissionListModel::MissionNameRole);
+  //m_pagedItemTableProxyModel->setSortRole(MissionListModel::MissionNameRole);
+  //m_pagedItemTableProxyModel->setFilterRole(gFilterRole);
+  //m_pagedItemTableProxyModel->setSortRole(gFilterRole);
+  m_filterItemTableProxyModel->setDynamicSortFilter(true);
+  m_filterItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
+  m_filterItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+  m_filterItemTableProxyModel->invalidate();
+  //m_pagedItemTableProxyModel->
+  //m_pagedItemTableProxyModel->setFilterFixedString("Bob");
+  //m_pagedItemTableProxyModel->setFilterFixedString(QVariant::fromValue(personsPage.at(0)).toString());
+
+  m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
+  m_pagedItemTableProxyModel->setDynamicSortFilter(true);
+  m_pagedItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
+  m_pagedItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+  m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
+  m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
+  //m_pagedItemTableProxyModel->re();
+  m_pagedItemTableProxyModel->invalidate();
 
   //m_ui->tableView->setModel(m_itemListModelCache.get());
-  m_ui->tableView->setModel(itemTableProxyModel);
+  m_ui->tableView->setModel(m_pagedItemTableProxyModel);
   //m_ui->tableView->setUpdatesEnabled(true);
   m_ui->tableView->setColumnWidth(1, 150);
   m_ui->tableView->update();
   m_ui->tableView->show();
 
-  m_ui->listView->setModel(itemTableProxyModel);
+  m_ui->listView->setModel(m_itemTableProxyModel);
   //m_ui->listView->scroll(0,1);
   //m_ui->listView->setSpacing(7);
   //m_ui->listView->resize(170,170);
@@ -300,12 +473,12 @@ m_ui(new Ui::MainWindow)
   m_ui->listView->update();
   m_ui->listView->show();
 
-  m_ui->listView_2->setModel(itemTableProxyModel);
+  m_ui->listView_2->setModel(m_itemTableProxyModel);
   m_ui->listView_2->setModelColumn(1);
   m_ui->listView_2->update();
   m_ui->listView_2->show();
 
-  m_ui->listView_3->setModel(itemTableProxyModel);
+  m_ui->listView_3->setModel(m_itemTableProxyModel);
   m_ui->listView_3->setModelColumn(2);
   m_ui->listView_3->update();
   m_ui->listView_3->show();
@@ -322,14 +495,28 @@ m_ui(new Ui::MainWindow)
 
   //m_ui->listView->setUpdatesEnabled(true);
   //m_ui->listView->setColumnWidth(1, 150);
+
+  m_pagedItemMapper->toFirst();
 }
 
 void MainWindow::onMapperIndexChanged(int pageNum) {
+
+  //m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage);
+  //qDebug() << "getLastRowSourceRowNum " << m_filterItemTableProxyModel->updateLastRowSourceRowNum();
+  m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
+  m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);
   //qDebug() << "onMapperIndexChanged " << pageNum;
 
   m_ui->prevButton->setEnabled(pageNum > 0);
   //m_ui->nextButton->setEnabled(pageNum < m_pagedItemMapper->model()->rowCount() / kItemsPerPage);
-  const int pagesTotal = m_pagedItemMapper->model()->rowCount() - 1;
+  //const int pagesTotal = m_pagedItemMapper->model()->rowCount() - 1;
+  qDebug() << "m_filterItemTableProxyModel->rowCount()" << m_filterItemTableProxyModel->rowCount();
+
+  //const int pagesTotal = m_filterItemTableProxyModel->rowCount() / kItemsPerPage;
+  std::div_t res = std::div( m_filterItemTableProxyModel->rowCount(), kItemsPerPage);
+  // Fast ceiling of an integer division
+  int pagesTotal = res.rem ? (res.quot + 1) : res.quot;
+
   m_ui->nextButton->setEnabled(pageNum < pagesTotal);
 
   /*if (!m_lastFetchedData || !m_lastFetchedData->recievedPagePersonsNum) {
