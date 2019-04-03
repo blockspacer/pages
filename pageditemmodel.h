@@ -548,7 +548,10 @@ public:
 
 public slots:
   void slotSourceModelChanged(void);
-  void slotDataChanged(const QModelIndex first, QModelIndex last);
+  void slotDataChanged(const QModelIndex& first, const QModelIndex& last);
+  void slotRowsInserted(const QModelIndex& parent, int first, int last);
+  void slotRowsRemoved(const QModelIndex &parent, int start, int end);
+  void sourceReset();
 
 protected:
 
