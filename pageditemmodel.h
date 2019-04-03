@@ -88,7 +88,7 @@ public:
   }
 
   QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
-    qDebug() << "data" << index.column() << role;
+    //qDebug() << "data" << index.column() << role;
 
     if (!index.isValid())
       return false;
@@ -169,6 +169,7 @@ private:
 
 //Q_DECLARE_METATYPE(ItemMapper)
 Q_DECLARE_METATYPE(ItemMapper*)
+Q_DECLARE_METATYPE(std::shared_ptr<ItemMapper>)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -205,12 +206,16 @@ public:
   {
     qDebug() << "setData ItemListModel " << value << value.toString();
 
-    if (!index.isValid())
+    if (!index.isValid()) {
       return false;
+    }
 
     //ItemMapper* item = m_items.at(index.row());
 
-    ItemMapper* itemMapper = qvariant_cast<ItemMapper*>(value.value<QVariant>());
+    std::shared_ptr<ItemMapper> itemMapper = qvariant_cast<std::shared_ptr<ItemMapper>>(value.value<QVariant>());
+    if (!itemMapper) {
+      return false;
+    }
 
     /*switch(role)
     {
@@ -233,10 +238,11 @@ public:
   QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
     //qDebug() << "data" << index.column() << role;
 
-    if (!index.isValid())
+    if (!index.isValid()) {
       return QVariant();
+    }
 
-    ItemMapper* item = m_items.at(index.row());
+    std::shared_ptr<ItemMapper> item = m_items.at(index.row());
 
     if (!item)
       return QVariant();
@@ -257,16 +263,17 @@ public:
     return result;
   }
 
-  void addItem(ItemMapper* item) {
+  void addItem(std::shared_ptr<ItemMapper> item) {
     m_items.push_back(item);
   }
 
 private:
-  QList<ItemMapper*> m_items;
+  QList<std::shared_ptr<ItemMapper>> m_items;
 };
 
 //Q_DECLARE_METATYPE(ItemListModel)
 Q_DECLARE_METATYPE(ItemListModel*)
+Q_DECLARE_METATYPE(std::shared_ptr<ItemListModel>)
 
 class PagedItemModel : public QAbstractListModel
 {
@@ -301,12 +308,16 @@ public:
   {
     qDebug() << "setData PagedItemModel " << value << value.toString();
 
-    if (!index.isValid())
+    if (!index.isValid()) {
       return false;
+    }
 
     //ItemListModel* item = m_pages.at(index.row());
 
-    ItemListModel* item = qvariant_cast<ItemListModel*>(value.value<QVariant>());
+    std::shared_ptr<ItemListModel> item = qvariant_cast<std::shared_ptr<ItemListModel>>(value.value<QVariant>());
+    if (!item) {
+      return false;
+    }
 
     /*switch(role)
     {
@@ -327,12 +338,13 @@ public:
   QVariant data(const QModelIndex &index, int role) const override {
     //qDebug() << "data" << index.column() << role;
 
-    if (!index.isValid())
+    if (!index.isValid()) {
       return false;
+    }
 
     QVariant result;
 
-    ItemListModel* item = m_pages.at(index.row());
+    std::shared_ptr<ItemListModel> item = m_pages.at(index.row());
 
     if (!item)
       return false;
@@ -352,16 +364,17 @@ public:
     return result;
   }
 
-  void addPage(ItemListModel* page) {
+  void addPage(const std::shared_ptr<ItemListModel> page) {
     m_pages.push_back(page);
   }
 
 private:
-  QList<ItemListModel*> m_pages;
+  QList<std::shared_ptr<ItemListModel>> m_pages;
 };
 
 //Q_DECLARE_METATYPE(PagedItemModel)
 Q_DECLARE_METATYPE(PagedItemModel*)
+//Q_DECLARE_METATYPE(std::shared_ptr<PagedItemModel>)
 
 class PagedItemMapper : public QDataWidgetMapper
 {
@@ -419,6 +432,7 @@ private:
 
 //Q_DECLARE_METATYPE(PagedItemMapper)
 Q_DECLARE_METATYPE(PagedItemMapper*)
+Q_DECLARE_METATYPE(std::shared_ptr<PagedItemMapper>)
 
 /*class PagedModel : public QAbstractListModel
 {

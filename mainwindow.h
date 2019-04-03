@@ -5,6 +5,8 @@
 
 #include "pageditemmodel.h"
 
+#include <memory>
+
 namespace Ui {
 class MainWindow;
 }
@@ -27,7 +29,7 @@ public slots:
 
 private:
   Ui::MainWindow *m_ui;
-  PagedItemMapper* m_pagedItemMapper;
+  std::shared_ptr<PagedItemMapper> m_pagedItemMapper;
 };
 
 #endif // MAINWINDOW_H

@@ -8,7 +8,7 @@ m_ui(new Ui::ItemWidget)
 m_ui->setupUi(this);
 }
 
-void ItemWidget::setMapper(ItemMapper* mapper) {
+void ItemWidget::setMapper(std::shared_ptr<ItemMapper> mapper) {
   m_mapper = mapper;
 }
 
@@ -22,7 +22,7 @@ void ItemWidget::removeMappings() {
   m_mapper->removeMapping(m_ui->surnameLineEdit);
 }
 
-ItemMapper* ItemWidget::getMapper() {
+std::shared_ptr<ItemMapper> ItemWidget::getMapper() {
   return m_mapper;
 }
 

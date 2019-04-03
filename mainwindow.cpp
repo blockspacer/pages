@@ -14,10 +14,10 @@ m_ui(new Ui::MainWindow)
 
   // TODO: USE shared ptr!!!
 
-  ItemListModel* m_itemListModel1 = new ItemListModel;
+  std::shared_ptr<ItemListModel> m_itemListModel1 = std::make_shared<ItemListModel>();
 
   {
-    ItemMapper* m_itemMapper = new ItemMapper;
+    std::shared_ptr<ItemMapper> m_itemMapper = std::make_shared<ItemMapper>();
     ItemWidget* itemWidget = new ItemWidget();
     itemWidget->setMapper(m_itemMapper);
     itemWidget->setMappings();
@@ -34,7 +34,7 @@ m_ui(new Ui::MainWindow)
   }
 
   {
-    ItemMapper* m_itemMapper = new ItemMapper;
+    std::shared_ptr<ItemMapper> m_itemMapper = std::make_shared<ItemMapper>();
     /*ItemWidget* itemWidget = new ItemWidget();
     itemWidget->setMapper(m_itemMapper);
     itemWidget->setMappings();*/
@@ -50,10 +50,10 @@ m_ui(new Ui::MainWindow)
     m_itemListModel1->addItem(m_itemMapper);
   }
 
-  ItemListModel* m_itemListModel2 = new ItemListModel;
+  std::shared_ptr<ItemListModel> m_itemListModel2 = std::make_shared<ItemListModel>();
 
   {
-    ItemMapper* m_itemMapper = new ItemMapper;
+    std::shared_ptr<ItemMapper> m_itemMapper = std::make_shared<ItemMapper>();
     /*ItemWidget* itemWidget = new ItemWidget();
     itemWidget->setMapper(m_itemMapper);
     itemWidget->setMappings();*/
@@ -69,11 +69,12 @@ m_ui(new Ui::MainWindow)
     m_itemListModel2->addItem(m_itemMapper);
   }
 
+  //std::shared_ptr<PagedItemModel> m_pagedItemModel = std::make_shared<PagedItemModel>();
   PagedItemModel* m_pagedItemModel = new PagedItemModel;
   m_pagedItemModel->addPage(m_itemListModel1);
   m_pagedItemModel->addPage(m_itemListModel2);
 
-  m_pagedItemMapper = new PagedItemMapper;
+  m_pagedItemMapper = std::make_shared<PagedItemMapper>();
   m_pagedItemMapper->setModel(m_pagedItemModel);
   m_pagedItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
 
@@ -131,7 +132,7 @@ m_ui(new Ui::MainWindow)
     m_pagedItemMapper->toNext();
   });
 
-  connect(m_pagedItemMapper, &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
+  connect(m_pagedItemMapper.get(), &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
 }
 
 void MainWindow::onMapperIndexChanged(int pageNum) {

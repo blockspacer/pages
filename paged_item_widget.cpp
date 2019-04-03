@@ -23,10 +23,10 @@ QVariant PagedItemWidget::getPersonsPage() const
 
 void PagedItemWidget::setPersonsPage(const QVariant &val)
 {
-  qDebug() << "setPersonsPage" << val;
+  //qDebug() << "setPersonsPage" << val;
   m_PersonsPage = val;
 
-  qDebug() << "PersonPageWidget clearPage";
+  //qDebug() << "PersonPageWidget clearPage";
   // remove all page widgets
   {
     QLayoutItem* item;
@@ -41,18 +41,24 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
     }
   }
 
-  ItemListModel* itemListModel = qvariant_cast<ItemListModel*>(val.value<QVariant>());
+  std::shared_ptr<ItemListModel> itemListModel = qvariant_cast<std::shared_ptr<ItemListModel>>(val.value<QVariant>());
+  if (!itemListModel) {
+    return;
+  }
 
-  qDebug() << "setPersonsPage rowCount" << itemListModel->rowCount(QModelIndex());
+  //qDebug() << "setPersonsPage rowCount" << itemListModel->rowCount(QModelIndex());
 
   for (int i = 0; i < itemListModel->rowCount(QModelIndex()); i++) {
     QModelIndex index = itemListModel->index(i, 0);
-    qDebug() << "setPersonsPage index" << index;
+    //qDebug() << "setPersonsPage index" << index;
 
     //itemListModel->itemFromIndex(index_person);
     QVariant itemMapperVariant = itemListModel->data(index, 0);
-    qDebug() << "setPersonsPage itemMapperVariant" << itemMapperVariant;
-    ItemMapper* itemMapper = qvariant_cast<ItemMapper*>(itemMapperVariant.value<QVariant>());
+    //qDebug() << "setPersonsPage itemMapperVariant" << itemMapperVariant;
+    std::shared_ptr<ItemMapper> itemMapper = qvariant_cast<std::shared_ptr<ItemMapper>>(itemMapperVariant.value<QVariant>());
+    if (!itemMapper) {
+      return;
+    }
 
     ItemWidget* itemWidget = new ItemWidget();
     itemWidget->setMapper(itemMapper);

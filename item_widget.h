@@ -17,16 +17,16 @@ public:
   explicit ItemWidget(QWidget *parent = nullptr);
   ~ItemWidget();
 
-  void setMapper(ItemMapper *mapper);
+  void setMapper(std::shared_ptr<ItemMapper> mapper);
 
-  ItemMapper *getMapper();
+  std::shared_ptr<ItemMapper> getMapper();
 
   void setMappings();
 
   void removeMappings();
 private:
   Ui::ItemWidget *m_ui;
-  ItemMapper* m_mapper;
+  std::shared_ptr<ItemMapper> m_mapper;
 };
 
 #endif // ITEM_H
