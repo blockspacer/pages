@@ -21,6 +21,16 @@ QVariant PagedItemWidget::getPersonsPage() const
   return m_PersonsPage;
 }
 
+const QByteArray PagedItemWidget::personsPagePropertyName() const {
+  /*for(int i = this->metaObject()->propertyOffset(); i < this->metaObject()->propertyCount(); ++i)
+    {
+          qDebug() << this->metaObject()->property(i).name() << this->metaObject()->property(i).read(this);
+    }*/
+  const int propertyOffset = metaObject()->propertyOffset();
+  //qDebug() << metaObject()->property(propertyOffset).name();
+  return metaObject()->property(propertyOffset).name();
+}
+
 void PagedItemWidget::setPersonsPage(const QVariant &val)
 {
   //qDebug() << "setPersonsPage" << val;
@@ -32,11 +42,11 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
     QLayoutItem* item;
     while ( ( item = ui->scrollVerticalLayout->takeAt( 0 ) ) != nullptr )
     {
-        //delete item->widget();
-        ItemWidget* itemW = (ItemWidget*)item->widget();
-        itemW->removeMappings();
-        item->widget()->deleteLater();
-        //item->deleteLater();
+      //delete item->widget();
+      ItemWidget* itemW = (ItemWidget*)item->widget();
+      itemW->removeMappings();
+      item->widget()->deleteLater();
+      //item->deleteLater();
         delete item;
     }
   }

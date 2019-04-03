@@ -13,6 +13,7 @@ class PagedItemWidget : public QWidget
 {
 Q_OBJECT
 
+/// \note property order is important
 Q_PROPERTY(QVariant m_PersonsPage READ getPersonsPage WRITE setPersonsPage NOTIFY personsPageChanged USER true)
 
 public:
@@ -20,6 +21,8 @@ public:
   ~PagedItemWidget();
 
   QVariant getPersonsPage() const;
+
+  const QByteArray personsPagePropertyName() const;
 
   //void clearPage();
 

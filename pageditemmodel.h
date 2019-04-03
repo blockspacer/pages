@@ -119,15 +119,15 @@ class ItemMapper : public QDataWidgetMapper
 public:
   explicit ItemMapper(QObject *pParent = nullptr) : QDataWidgetMapper(pParent)
   {
-    m_model = new ItemModel(this);
-    setModel(m_model);
+    //m_model = new ItemModel(this);
+    //setModel(m_model);
   }
   virtual ~ItemMapper()
   {}
 
-  ItemModel* getModel() {
+  /*ItemModel* getModel() {
     return m_model;
-  }
+  }*/
 
   /*void AddNameMapping(QLineEdit *pLineEdit)
   {
@@ -164,7 +164,7 @@ public:
   }*/
 
 private:
-  ItemModel* m_model;
+  //ItemModel* m_model;
 };
 
 //Q_DECLARE_METATYPE(ItemMapper)
@@ -366,6 +366,48 @@ public:
 
   void addPage(const std::shared_ptr<ItemListModel> page) {
     m_pages.push_back(page);
+  }
+
+  bool removePageAt(int index) {
+    if(index < 0 || index >= m_pages.size()) {
+      return false;
+    }
+
+    m_pages.removeAt(index);
+    return true;
+  }
+
+  bool replacePageAt(int index, std::shared_ptr<ItemListModel> newItem) {
+    if(index < 0 || index >= m_pages.size()) {
+      return false;
+    }
+
+    m_pages.replace(index, newItem);
+    return true;
+  }
+
+  QList<std::shared_ptr<ItemListModel>> getPages() const {
+    return m_pages;
+  }
+
+  int pagesTotal() const {
+    return m_pages.size();
+  }
+
+  void setPages(const QList<std::shared_ptr<ItemListModel>>& pages) {
+    m_pages = pages;
+  }
+
+  const std::shared_ptr<ItemListModel> getPageAt(int index) const {
+    if(index < 0 || index >= m_pages.size()) {
+      return nullptr;
+    }
+
+    return m_pages.at(index);
+  }
+
+  void removeAllPages() {
+    m_pages.clear();
   }
 
 private:

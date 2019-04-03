@@ -4,7 +4,36 @@
 #include "paged_item_widget.h"
 
 /// \note place no more than kItemsPerPage items into each ItemListModel
-static int kItemsPerPage = 2;
+// static int kItemsPerPage = 2;
+
+static ItemModel* createItemModel(const QString& name, const QString& surname, QObject* parent = nullptr) {
+  ItemModel* itemModel = new ItemModel();
+  if(parent) {
+    itemModel->setParent(parent);
+  }
+  itemModel->setName(name);
+  itemModel->setSurname(surname);
+  QObject::connect(itemModel, &ItemModel::dataChanged, [](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles){
+    qDebug() << "ItemModel::dataChanged";
+  });
+  return itemModel;
+}
+
+static std::shared_ptr<ItemMapper> createItemMapper(ItemModel* itemModel) {
+  std::shared_ptr<ItemMapper> itemMapper = std::make_shared<ItemMapper>();
+  /// \note allows two-way data editing
+  itemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
+  itemMapper->setModel(itemModel);
+  itemMapper->toFirst();
+  return itemMapper;
+}
+
+static ItemWidget* createItemWidget(std::shared_ptr<ItemMapper> itemMapper) {
+  ItemWidget* itemWidget = new ItemWidget();
+  itemWidget->setMapper(itemMapper);
+  itemWidget->setMappings();
+  return itemWidget;
+}
 
 MainWindow::MainWindow(QWidget *parent) :
 QMainWindow(parent),
@@ -12,78 +41,59 @@ m_ui(new Ui::MainWindow)
 {
   m_ui->setupUi(this);
 
-  // TODO: USE shared ptr!!!
+  m_pagedItemMapper = std::make_shared<PagedItemMapper>();
+
+  m_ui->prevButton->setEnabled(false);
+  m_ui->nextButton->setEnabled(false);
 
   std::shared_ptr<ItemListModel> m_itemListModel1 = std::make_shared<ItemListModel>();
 
   {
-    std::shared_ptr<ItemMapper> m_itemMapper = std::make_shared<ItemMapper>();
-    ItemWidget* itemWidget = new ItemWidget();
-    itemWidget->setMapper(m_itemMapper);
-    itemWidget->setMappings();
-    /// \note allows two-way data editing
-    m_itemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
-    m_itemMapper->getModel()->setName("Alie");
-    m_itemMapper->getModel()->setSurname("Bork");
-    m_itemMapper->toFirst();
-    QObject::connect(m_itemMapper->getModel(), &ItemModel::dataChanged, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles){
-      qDebug() << "ItemModel::dataChanged";
-    });
-    m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    ItemModel* itemModel = createItemModel("Alie", "Bork");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModel1->addItem(m_itemMapper);
   }
 
   {
-    std::shared_ptr<ItemMapper> m_itemMapper = std::make_shared<ItemMapper>();
-    /*ItemWidget* itemWidget = new ItemWidget();
-    itemWidget->setMapper(m_itemMapper);
-    itemWidget->setMappings();*/
-    /// \note allows two-way data editing
-    m_itemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
-    m_itemMapper->getModel()->setName("Bob");
-    m_itemMapper->getModel()->setSurname("Byorn");
-    m_itemMapper->toFirst();
-    QObject::connect(m_itemMapper->getModel(), &ItemModel::dataChanged, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles){
-      qDebug() << "ItemModel::dataChanged";
-    });
-    //ui->scrollVerticalLayout->addWidget(itemWidget);
+    ItemModel* itemModel = createItemModel("Bob", "Byorn");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModel1->addItem(m_itemMapper);
   }
 
   std::shared_ptr<ItemListModel> m_itemListModel2 = std::make_shared<ItemListModel>();
 
   {
-    std::shared_ptr<ItemMapper> m_itemMapper = std::make_shared<ItemMapper>();
-    /*ItemWidget* itemWidget = new ItemWidget();
-    itemWidget->setMapper(m_itemMapper);
-    itemWidget->setMappings();*/
-    /// \note allows two-way data editing
-    m_itemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
-    m_itemMapper->getModel()->setName("Frank");
-    m_itemMapper->getModel()->setSurname("Gerin");
-    m_itemMapper->toFirst();
-    QObject::connect(m_itemMapper->getModel(), &ItemModel::dataChanged, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles){
-      qDebug() << "ItemModel::dataChanged";
-    });
-    //ui->scrollVerticalLayout->addWidget(itemWidget);
+    ItemModel* itemModel = createItemModel("Anna", "Kerman");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModel2->addItem(m_itemMapper);
   }
 
   //std::shared_ptr<PagedItemModel> m_pagedItemModel = std::make_shared<PagedItemModel>();
-  PagedItemModel* m_pagedItemModel = new PagedItemModel;
+  PagedItemModel* m_pagedItemModel = new PagedItemModel(m_pagedItemMapper.get());
   m_pagedItemModel->addPage(m_itemListModel1);
   m_pagedItemModel->addPage(m_itemListModel2);
 
-  m_pagedItemMapper = std::make_shared<PagedItemMapper>();
+  //m_pagedItemModel->removePageAt(0);
+  //m_pagedItemModel->replacePageAt(0, m_itemListModel1);
+  //m_pagedItemModel->removeAllPages();
+  //m_pagedItemMapper->currentIndexChanged(0);
+
   m_pagedItemMapper->setModel(m_pagedItemModel);
   m_pagedItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
 
   PagedItemWidget* m_pagedItemWidget = new PagedItemWidget;
   m_ui->scrollVerticalLayout->addWidget(m_pagedItemWidget);
-  m_pagedItemMapper->addMapping(m_pagedItemWidget, 0, "m_PersonsPage");
 
-  m_pagedItemMapper->toFirst();
-  //m_pagedItemMapper->toNext();
+  m_pagedItemMapper->addMapping(m_pagedItemWidget, 0, m_pagedItemWidget->personsPagePropertyName());
 
   connect(m_ui->prevButton, &QAbstractButton::clicked, [this]() {
     /*if (!isDisconnected) {
@@ -133,11 +143,17 @@ m_ui(new Ui::MainWindow)
   });
 
   connect(m_pagedItemMapper.get(), &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
+
+  m_pagedItemMapper->toFirst();
 }
 
 void MainWindow::onMapperIndexChanged(int pageNum) {
+  //qDebug() << "onMapperIndexChanged " << pageNum;
+
   m_ui->prevButton->setEnabled(pageNum > 0);
-  m_ui->nextButton->setEnabled(pageNum < m_pagedItemMapper->model()->rowCount() / kItemsPerPage);
+  //m_ui->nextButton->setEnabled(pageNum < m_pagedItemMapper->model()->rowCount() / kItemsPerPage);
+  const int pagesTotal = m_pagedItemMapper->model()->rowCount() - 1;
+  m_ui->nextButton->setEnabled(pageNum < pagesTotal);
 
   /*if (!m_lastFetchedData || !m_lastFetchedData->recievedPagePersonsNum) {
     qDebug() << "nothing to show";
