@@ -278,23 +278,37 @@ m_ui(new Ui::MainWindow)
 
   m_pagedItemMapper->toFirst();
 
-  m_ui->tableView->setModel(m_itemListModelCache.get());
+  ItemTableProxyModel* itemTableProxyModel = new ItemTableProxyModel();
+  itemTableProxyModel->setSourceModel(m_itemListModelCache.get());
+
+  //m_ui->tableView->setModel(m_itemListModelCache.get());
+  m_ui->tableView->setModel(itemTableProxyModel);
   //m_ui->tableView->setUpdatesEnabled(true);
   m_ui->tableView->setColumnWidth(1, 150);
   m_ui->tableView->update();
   m_ui->tableView->show();
 
-  m_ui->listView->setModel(m_itemListModelCache.get());
+  m_ui->listView->setModel(itemTableProxyModel);
   //m_ui->listView->scroll(0,1);
   //m_ui->listView->setSpacing(7);
   //m_ui->listView->resize(170,170);
-  m_ui->listView->setModelColumn(1);
+  m_ui->listView->setModelColumn(0);
   //m_ui->listView->setUniformItemSizes(true);
   //m_ui->listView->setGridSize(QSize(150,150));
   // m_ui->listView->setModelColumn(0);
   //m_ui->listView->resizeRowsToContents
   m_ui->listView->update();
   m_ui->listView->show();
+
+  m_ui->listView_2->setModel(itemTableProxyModel);
+  m_ui->listView_2->setModelColumn(1);
+  m_ui->listView_2->update();
+  m_ui->listView_2->show();
+
+  m_ui->listView_3->setModel(itemTableProxyModel);
+  m_ui->listView_3->setModelColumn(2);
+  m_ui->listView_3->update();
+  m_ui->listView_3->show();
 
 /*QListView* listView = new QListView(this);
     listView->setModel(m_itemListModelCache.get());

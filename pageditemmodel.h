@@ -54,6 +54,9 @@ public:
 
   void setName(const QString& sString) {
     m_item.name = sString;
+
+    QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
+    emit dataChanged(indexItem, indexItem);
   }
 
   QString getSurname() const {
@@ -62,6 +65,9 @@ public:
 
   void setSurname(const QString& sString) {
     m_item.surname = sString;
+
+    QModelIndex indexItem = index(0, static_cast<int>(Columns::Surname));
+    emit dataChanged(indexItem, indexItem);
   }
 
   int getGUID() const {
@@ -73,6 +79,9 @@ public:
     m_item.guid = GUID;
 
     emit guidChanged(prevGUID, m_item.guid);
+
+    QModelIndex indexItem = index(0, static_cast<int>(Columns::GUID));
+    emit dataChanged(indexItem, indexItem);
   }
 
   int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
@@ -93,17 +102,17 @@ public:
     switch(index.column())
     {
       case static_cast<int>(Columns::Name):
-        setName(value.toString());
+        setName(value.toString()); // emits dataChanged signal
         break;
       case static_cast<int>(Columns::Surname):
-        setSurname(value.toString());
+        setSurname(value.toString()); // emits dataChanged signal
         break;
       case static_cast<int>(Columns::GUID):
-        setGUID(value.toInt());
+        setGUID(value.toInt()); // emits dataChanged signal
         break;
     }
 
-    emit dataChanged(index, index);
+    //emit dataChanged(index, index);
     return true;
   }
 
@@ -202,6 +211,32 @@ class ItemListModel : public QAbstractListModel
 {
     //Q_DISABLE_COPY(ItemListModel)
     Q_OBJECT
+
+
+/*public:
+  explicit ItemTableProxyModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
+    connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
+  }
+
+  virtual ~ItemTableProxyModel() {
+  }
+
+public slots:
+  void slotSourceModelChanged(void);
+  void slotDataChanged(const QModelIndex first, QModelIndex last);
+
+
+void slotSourceModelChanged()
+{
+  disconnect(this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
+  connect(sourceModel(), SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
+}
+
+void slotDataChanged(const QModelIndex first, QModelIndex last)
+{
+  emit dataChanged(mapFromSource(first), mapFromSource(last));
+}*/
+
 public:
   /*enum class Roles {
     Name = Qt::UserRole + 1
@@ -213,7 +248,7 @@ public:
   enum class Columns {
     Item = 0
      // only for debug purposes
-    , DebugName
+    //, DebugName
     , Total
   };
 
@@ -246,29 +281,12 @@ public:
       return false;
     }
 
-    /*switch(role)
-    {
-      case static_cast<int>(Roles::Name):
-        item->getModel()->setName(value.toString());
-        break;
-      case static_cast<int>(Roles::Surname):
-        item->getModel()->setSurname(value.toString());
-        break;
-    }
-
-    m_items.replace(index.row(), item);*/
-
-    //m_items.replace(index.row(), itemMapper);
-
     QVector<int> roles;
     roles << role;
     if (!replaceItemAt(index.row(), itemMapper, roles)) { // emits dataChanged signal
       qDebug() << "ItemListModel::setData: invalid index.row() " << index.row();
     }
 
-    //QModelIndex indexDebugName = QModelIndex(index.row(), index.column(), static_cast<int>(Columns::DebugName), index.model());
-    //emit dataChanged(indexDebugName, indexDebugName);
-    //emit dataChanged(index, index);
     return true;
   }
 
@@ -282,7 +300,7 @@ public:
         return QString("Row %1").arg(section);
   }
 
-  bool insertRows(int position, int rows, const QModelIndex &index = QModelIndex()) Q_DECL_OVERRIDE {
+  /*bool insertRows(int position, int rows, const QModelIndex &index = QModelIndex()) Q_DECL_OVERRIDE {
     beginInsertRows(QModelIndex(), position, position+rows-1);
 
     for (int row = 0; row < rows; ++row) {
@@ -302,7 +320,7 @@ public:
 
     endRemoveRows();
     return true;
-  }
+  }*/
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
@@ -339,9 +357,9 @@ public:
     //if (role == Qt::DisplayRole)
     //  return QVariant("QVariant");
 
-    if (index.column() == static_cast<int>(Columns::DebugName)) {
+    /*if (index.column() == static_cast<int>(Columns::DebugName)) {
       return QVariant(static_cast<ItemModel*>(item->model())->getName());
-    }
+    }*/
 
     result = QVariant::fromValue(item);
 
@@ -383,6 +401,15 @@ public:
     //emit dataChanged(indexItem, indexItem);
 
     emit endInsertRows();
+
+    //connect(item->model(), &QAbstractItemModel::dataChanged, this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
+    const int itemRowId = oldRows + 1;
+    const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
+    connect(item->model(), &QAbstractItemModel::dataChanged, item->model(), [this, indexMapped](const QModelIndex first, QModelIndex last){
+      qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged";
+      emit dataChanged(indexMapped, indexMapped);
+    });
+
   }
 
   bool removeItemAt(int rowIndex) {
@@ -420,8 +447,8 @@ public:
     QModelIndex indexItem = index(rowIndex, static_cast<int>(Columns::Item));
     emit dataChanged(indexItem, indexItem, roles);
 
-    QModelIndex indexItemDebug = index(rowIndex, static_cast<int>(Columns::DebugName));
-    emit dataChanged(indexItemDebug, indexItemDebug, roles);
+    /*QModelIndex indexItemDebug = index(rowIndex, static_cast<int>(Columns::DebugName));
+    emit dataChanged(indexItemDebug, indexItemDebug, roles);*/
 
     return true;
   }
@@ -499,6 +526,245 @@ private:
 //Q_DECLARE_METATYPE(ItemListModel)
 Q_DECLARE_METATYPE(ItemListModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<ItemListModel>)
+
+class ItemTableProxyModel : public QAbstractProxyModel
+{
+    Q_OBJECT
+
+  /*enum class Columns {
+    Item = 0
+    , Name
+    , Surname
+    , Total
+  };*/
+
+public:
+  explicit ItemTableProxyModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
+    connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
+  }
+
+  virtual ~ItemTableProxyModel() {
+  }
+
+public slots:
+  void slotSourceModelChanged(void);
+  void slotDataChanged(const QModelIndex first, QModelIndex last);
+
+protected:
+
+  ItemListModel* getSourceListModel() const {
+    return static_cast<ItemListModel*>(sourceModel());
+  }
+
+  /*bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override {
+    return true;
+  }
+
+  bool filterAcceptsColumn(int sourceColumn, const QModelIndex &sourceParent) const override {
+    return true;
+  }
+
+  bool lessThan(const QModelIndex &left, const QModelIndex &right) const override {
+    return true;
+  }*/
+
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
+    ItemListModel* source = getSourceListModel();
+    if (!source) {
+      return 0;
+    }
+
+    return source->getItems().size();
+  }
+
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
+    return static_cast<int>(ItemModel::Columns::Total);
+  }
+
+  bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
+  {
+    qDebug() << "setData ItemListModel " << value << value.toString();
+
+    if (!index.isValid()) {
+      return false;
+    }
+
+    //ItemMapper* item = m_items.at(index.row());
+
+    /*std::shared_ptr<ItemMapper> itemMapper = qvariant_cast<std::shared_ptr<ItemMapper>>(value.value<QVariant>());
+    if (!itemMapper) {
+      return false;
+    }
+
+    QVector<int> roles;
+    roles << role;
+    if (!replaceItemAt(index.row(), itemMapper, roles)) { // emits dataChanged signal
+      qDebug() << "ItemListModel::setData: invalid index.row() " << index.row();
+    }*/
+
+    ItemListModel* source = getSourceListModel();
+    if (!source) {
+      return false;
+    }
+
+    std::shared_ptr<ItemMapper> mapper = getSourceListModel()->getItemAt(index.row());
+    if(!mapper.get()) {
+      return false;
+    }
+
+    ItemModel* model = static_cast<ItemModel*>(mapper->model());
+    if(!model) {
+      return false;
+    }
+
+    switch(index.column())
+    {
+      case static_cast<int>(ItemModel::Columns::Name):
+        model->setName(value.toString());
+        break;
+      case static_cast<int>(ItemModel::Columns::Surname):
+        model->setSurname(value.toString());
+        break;
+      case static_cast<int>(ItemModel::Columns::GUID):
+        model->setGUID(value.toInt());
+        break;
+    }
+
+    emit dataChanged(index, index);
+    return true;
+  }
+
+  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const Q_DECL_OVERRIDE {
+    //qDebug() << "data" << index.column() << role;
+
+    //return QVariant("QVariant");
+
+    if (!index.isValid()) {
+      return QVariant();
+    }
+
+    if (role == Qt::SizeHintRole) {
+      return QVariant(QSize( 25, 25 ));
+    }
+
+    if(role != Qt::DisplayRole && role != Qt::EditRole){
+      return QVariant(); // disable tooltips, icons, e.t.c
+    }
+
+    QVariant result;
+
+    std::shared_ptr<ItemMapper> mapper = getSourceListModel()->getItemAt(index.row());
+    if(!mapper.get()) {
+      return result;
+    }
+
+    ItemModel* model = static_cast<ItemModel*>(mapper->model());
+    if(!model) {
+      return result;
+    }
+
+    switch(index.column())
+    {
+      case static_cast<int>(ItemModel::Columns::Name):
+        result = model->getName();
+        break;
+      case static_cast<int>(ItemModel::Columns::Surname):
+        result = model->getSurname();
+        break;
+      case static_cast<int>(ItemModel::Columns::GUID):
+        result = model->getGUID();
+        break;
+    }
+    return result;
+  }
+
+  QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    QModelIndex res;
+    if(!parent.isValid())
+    {
+      res = createIndex(row, column);
+    }
+    return res;
+  }
+
+  QModelIndex parent(const QModelIndex & /*child*/) const Q_DECL_OVERRIDE {
+    return QModelIndex();
+  }
+
+  QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
+    QModelIndex res;
+    if(proxyIndex.isValid())
+    {
+      if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+      {
+         // res = createIndex(proxyIndex.row(), -1, (quintptr)-1);
+         res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
+      }
+      else// if(proxyIndex.column() < sourceModel()->columnCount())
+      {
+         res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
+      }
+      /*else
+      {
+         res = sourceModel()->index(proxyIndex.row(), proxyIndex.column()-m_nbCol);
+      }*/
+    }
+    return res;
+  }
+
+  QModelIndex mapFromSource(const QModelIndex &sourceIndex) const Q_DECL_OVERRIDE {
+    QModelIndex res;
+    /*if(!sourceIndex.isValid())
+    {
+      if((sourceIndex.row() > -1) &&
+         (sourceIndex.column() >= sourceModel()->columnCount() && sourceIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1)) &&
+         (sourceIndex.internalId() == (quintptr)(sourceIndex.column())))
+      {
+         res = index(sourceIndex.row(), sourceIndex.column());
+      }
+    }
+    else
+    {
+      res = index(sourceIndex.row(), sourceIndex.column());
+    }*/
+    res = index(sourceIndex.row(), sourceIndex.column());
+    return res;
+  }
+
+  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
+  {
+    if (!index.isValid())
+      return Qt::ItemIsEnabled;
+
+    /*return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;*/
+
+   Qt::ItemFlags res;
+   if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+   {
+      res = QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+   }
+   else
+   {
+      res = sourceModel()->flags(mapToSource(index));
+   }
+   return res;
+  }
+
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
+    if (role != Qt::DisplayRole)
+        return QVariant();
+
+    if (orientation == Qt::Horizontal)
+        return QString("Column: %1").arg(section);
+    else
+        return QString("Row: %1").arg(section);
+  }
+
+private:
+};
+
+Q_DECLARE_METATYPE(ItemTableProxyModel*)
+Q_DECLARE_METATYPE(std::shared_ptr<ItemTableProxyModel>)
 
 class ItemPageListModel : public QAbstractListModel
 {

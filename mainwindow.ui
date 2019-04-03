@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>603</width>
-    <height>436</height>
+    <width>764</width>
+    <height>438</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,6 +26,18 @@
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="1">
         <widget class="QScrollArea" name="scrollArea">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>300</width>
+           <height>0</height>
+          </size>
+         </property>
          <property name="widgetResizable">
           <bool>true</bool>
          </property>
@@ -34,8 +46,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>214</width>
-            <height>342</height>
+            <width>298</width>
+            <height>354</height>
            </rect>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
@@ -96,14 +108,48 @@
          </widget>
         </widget>
        </item>
+       <item row="0" column="4">
+        <widget class="QListView" name="listView">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="3">
-        <widget class="QTableView" name="tableView"/>
+        <widget class="QTableView" name="tableView">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="5">
+        <widget class="QListView" name="listView_2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
        </item>
        <item row="0" column="2">
         <layout class="QVBoxLayout" name="verticalLayout"/>
        </item>
-       <item row="0" column="4">
-        <widget class="QListView" name="listView"/>
+       <item row="0" column="6">
+        <widget class="QListView" name="listView_3">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -115,7 +161,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>603</width>
+     <width>764</width>
      <height>19</height>
     </rect>
    </property>
