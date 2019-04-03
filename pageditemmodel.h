@@ -11,6 +11,7 @@
 struct Item // : public QObject
 {
   //Q_PROPERTY
+    int guid; // TODO: change guid map when item changes
     QString name;
     QString surname;
 };
@@ -23,6 +24,10 @@ Q_DECLARE_METATYPE(Item*)
 class ItemModel : public QAbstractListModel
 {
     Q_OBJECT
+
+Q_SIGNALS:
+    void guidChanged(const int &prevGUID, const int &newGUID);
+
 public:
   /*enum class Roles {
     NameRole = Qt::UserRole + 1
@@ -33,6 +38,7 @@ public:
   enum class Columns {
     Name = 0
     , Surname
+    , GUID
     , Total
   };
 
@@ -46,7 +52,7 @@ public:
     return m_item.name;
   }
 
-  void setName(QString sString) {
+  void setName(const QString& sString) {
     m_item.name = sString;
   }
 
@@ -54,19 +60,30 @@ public:
     return m_item.surname;
   }
 
-  void setSurname(QString sString) {
+  void setSurname(const QString& sString) {
     m_item.surname = sString;
   }
 
-  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int getGUID() const {
+    return m_item.guid;
+  }
+
+  void setGUID(const int GUID) {
+    const int prevGUID = m_item.guid;
+    m_item.guid = GUID;
+
+    emit guidChanged(prevGUID, m_item.guid);
+  }
+
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
     return 1;
   }
 
-  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
     return static_cast<int>(Columns::Total);
   }
 
-  bool setData(const QModelIndex &index, const QVariant &value, int role) override
+  bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
     qDebug() << "setData PersonsModel " << value << value.toString();
 
@@ -81,14 +98,19 @@ public:
       case static_cast<int>(Columns::Surname):
         setSurname(value.toString());
         break;
+      case static_cast<int>(Columns::GUID):
+        setGUID(value.toInt());
+        break;
     }
 
     emit dataChanged(index, index);
     return true;
   }
 
-  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
+  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const Q_DECL_OVERRIDE {
     //qDebug() << "data" << index.column() << role;
+
+    //return QVariant("QVariant");
 
     if (!index.isValid())
       return false;
@@ -101,6 +123,9 @@ public:
         break;
       case static_cast<int>(Columns::Surname):
         result = getSurname();
+        break;
+      case static_cast<int>(Columns::GUID):
+        result = getGUID();
         break;
     }
     return result;
@@ -175,16 +200,20 @@ Q_DECLARE_METATYPE(std::shared_ptr<ItemMapper>)
 
 class ItemListModel : public QAbstractListModel
 {
+    //Q_DISABLE_COPY(ItemListModel)
     Q_OBJECT
 public:
-  enum class Roles {
+  /*enum class Roles {
     Name = Qt::UserRole + 1
     , Surname
+    , GUID
     , Total
-  };
+  };*/
 
   enum class Columns {
     Item = 0
+     // only for debug purposes
+    , DebugName
     , Total
   };
 
@@ -194,15 +223,15 @@ public:
   virtual ~ItemListModel() {
   }
 
-  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
     return m_items.size();
   }
 
-  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
     return static_cast<int>(Columns::Total);
   }
 
-  bool setData(const QModelIndex &index, const QVariant &value, int role) override
+  bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
     qDebug() << "setData ItemListModel " << value << value.toString();
 
@@ -229,18 +258,76 @@ public:
 
     m_items.replace(index.row(), item);*/
 
-    m_items.replace(index.row(), itemMapper);
+    //m_items.replace(index.row(), itemMapper);
 
-    emit dataChanged(index, index);
+    QVector<int> roles;
+    roles << role;
+    if (!replaceItemAt(index.row(), itemMapper, roles)) { // emits dataChanged signal
+      qDebug() << "ItemListModel::setData: invalid index.row() " << index.row();
+    }
+
+    //QModelIndex indexDebugName = QModelIndex(index.row(), index.column(), static_cast<int>(Columns::DebugName), index.model());
+    //emit dataChanged(indexDebugName, indexDebugName);
+    //emit dataChanged(index, index);
     return true;
   }
 
-  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const override {
-    //qDebug() << "data" << index.column() << role;
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
+    if (role != Qt::DisplayRole)
+        return QVariant();
 
+    if (orientation == Qt::Horizontal)
+        return QString("Column %1").arg(section);
+    else
+        return QString("Row %1").arg(section);
+  }
+
+  bool insertRows(int position, int rows, const QModelIndex &index = QModelIndex()) Q_DECL_OVERRIDE {
+    beginInsertRows(QModelIndex(), position, position+rows-1);
+
+    for (int row = 0; row < rows; ++row) {
+        m_items.push_back(nullptr);
+    }
+
+    endInsertRows();
+    return true;
+  }
+
+  bool removeRows(int position, int rows, const QModelIndex &index = QModelIndex()) Q_DECL_OVERRIDE {
+    beginRemoveRows(QModelIndex(), position, position+rows-1);
+
+    for (int row = 0; row < rows; ++row) {
+        m_items.removeAt(position);
+    }
+
+    endRemoveRows();
+    return true;
+  }
+
+  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
+  {
+    if (!index.isValid())
+      return Qt::ItemIsEnabled;
+
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+  }
+
+  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const Q_DECL_OVERRIDE {
+    //qDebug() << "data" << index.column() << role;
     if (!index.isValid()) {
       return QVariant();
     }
+
+    if (role == Qt::SizeHintRole) {
+      return QVariant(QSize( 25, 25 ));
+    }
+
+    if(role != Qt::DisplayRole && role != Qt::EditRole){
+      return QVariant(); // disable tooltips, icons, e.t.c
+    }
+
+   // return QVariant("dataStore[index.row()]->getPerson()");
+
 
     std::shared_ptr<ItemMapper> item = m_items.at(index.row());
 
@@ -248,6 +335,13 @@ public:
       return QVariant();
 
     QVariant result;
+
+    //if (role == Qt::DisplayRole)
+    //  return QVariant("QVariant");
+
+    if (index.column() == static_cast<int>(Columns::DebugName)) {
+      return QVariant(static_cast<ItemModel*>(item->model())->getName());
+    }
 
     result = QVariant::fromValue(item);
 
@@ -263,11 +357,142 @@ public:
     return result;
   }
 
-  void addItem(std::shared_ptr<ItemMapper> item) {
+  void pushBack(std::shared_ptr<ItemMapper> item) {
+    const int oldRows = itemsTotal();
+
+    /*
+        First is the new index of the first element that will be inserted.
+        Last is the new index of the last element that will be inserted.
+        Since we're appending only one element at the end of the list, the
+        index of the first and last elements is the same, and is equal to
+        the current size of the list.
+    */
+    const int first = oldRows;
+    const int last = first;
+    emit beginInsertRows(QModelIndex(), first, last);
+
     m_items.push_back(item);
+
+    int newGuid = static_cast<ItemModel*>(item->model())->getGUID();
+    m_guidToItem[newGuid] = item;
+
+    //QModelIndex indexDebugName = index(rowCount(QModelIndex()), static_cast<int>(Columns::DebugName));
+    //emit dataChanged(indexDebugName, indexDebugName);
+
+    //QModelIndex indexItem = index(rowCount(QModelIndex()), static_cast<int>(Columns::Item));
+    //emit dataChanged(indexItem, indexItem);
+
+    emit endInsertRows();
+  }
+
+  bool removeItemAt(int rowIndex) {
+    if(rowIndex < 0 || rowIndex >= itemsTotal()) {
+      return false;
+    }
+
+    emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
+
+    int oldGuid = static_cast<ItemModel*>(getItemAt(rowIndex)->model())->getGUID();
+    m_guidToItem.remove(oldGuid);
+    m_items.removeAt(rowIndex);
+
+    //QModelIndex indexItem = index(rowIndex, static_cast<int>(Columns::Item));
+    //emit dataChanged(indexItem, indexItem);
+
+    emit endRemoveRows();
+
+    return true;
+  }
+
+  bool replaceItemAt(int rowIndex, std::shared_ptr<ItemMapper> newItem, QVector<int> roles = QVector<int>()) {
+    if(rowIndex < 0 || rowIndex >= itemsTotal()) {
+      return false;
+    }
+
+    int oldGuid = static_cast<ItemModel*>(getItemAt(rowIndex)->model())->getGUID();
+    m_guidToItem.remove(oldGuid);
+
+    m_items.replace(rowIndex, newItem);
+
+    int newGuid = static_cast<ItemModel*>(newItem->model())->getGUID();
+    m_guidToItem[newGuid] = newItem;
+
+    QModelIndex indexItem = index(rowIndex, static_cast<int>(Columns::Item));
+    emit dataChanged(indexItem, indexItem, roles);
+
+    QModelIndex indexItemDebug = index(rowIndex, static_cast<int>(Columns::DebugName));
+    emit dataChanged(indexItemDebug, indexItemDebug, roles);
+
+    return true;
+  }
+
+  const QList<std::shared_ptr<ItemMapper>> getItems() const {
+    return m_items;
+  }
+
+  int itemsTotal() const {
+    Q_ASSERT(m_items.size() == m_guidToItem.size());
+    return m_items.size();
+  }
+
+  void setItems(const QList<std::shared_ptr<ItemMapper>>& items) {
+    removeAllItems(); // emit row remove signal
+
+    emit beginInsertRows(QModelIndex(), items.size(), items.size());
+
+    m_items = items;
+
+    for (auto& newItem: items) {
+      int newGuid = static_cast<ItemModel*>(newItem->model())->getGUID();
+      m_guidToItem[newGuid] = newItem;
+    }
+
+    emit endInsertRows();
+
+    Q_ASSERT(m_items.size() == m_guidToItem.size());
+  }
+
+  const std::shared_ptr<ItemMapper> getItemAt(int rowIndex) const {
+    Q_ASSERT(m_items.size() == m_guidToItem.size());
+
+    if(rowIndex < 0 || rowIndex >= m_items.size()) {
+      return nullptr;
+    }
+
+    return m_items.at(rowIndex);
+  }
+
+  const std::shared_ptr<ItemMapper> getItemById(int guid) const {
+    Q_ASSERT(m_items.size() == m_guidToItem.size());
+
+    qDebug() << "m_guidToItem.size()" << m_guidToItem.size();
+
+    if(!m_guidToItem.contains(guid)) {
+      qDebug() << "ItemListModel not contains guid = " << guid;
+      return nullptr;
+    }
+
+    QHash<int, std::shared_ptr<ItemMapper>>::const_iterator it = m_guidToItem.find(guid);
+
+    qDebug() << "m_guidToItem.size() 3" << m_guidToItem.size();
+
+    return it.value();
+  }
+
+  void removeAllItems() {
+
+    emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
+
+    m_items.clear();
+    m_guidToItem.clear();
+
+    emit endRemoveRows();
+
+    Q_ASSERT(m_items.size() == m_guidToItem.size());
   }
 
 private:
+  QHash<int, std::shared_ptr<ItemMapper>> m_guidToItem;
   QList<std::shared_ptr<ItemMapper>> m_items;
 };
 
@@ -275,7 +500,7 @@ private:
 Q_DECLARE_METATYPE(ItemListModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<ItemListModel>)
 
-class PagedItemModel : public QAbstractListModel
+class ItemPageListModel : public QAbstractListModel
 {
     Q_OBJECT
 public:
@@ -290,21 +515,21 @@ public:
     , Total
   };
 
-  explicit PagedItemModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
+  explicit ItemPageListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
   }
 
-  virtual ~PagedItemModel() {
+  virtual ~ItemPageListModel() {
   }
 
-  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
     return m_pages.size();
   }
 
-  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const override {
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
     return static_cast<int>(Columns::Total);
   }
 
-  bool setData(const QModelIndex &index, const QVariant &value, int role) override
+  bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
     qDebug() << "setData PagedItemModel " << value << value.toString();
 
@@ -329,13 +554,17 @@ public:
         break;
     }*/
 
-    m_pages.replace(index.row(), item);
+    QVector<int> roles;
+    roles << role;
+    if (!replaceItemAt(index.row(), item, roles)) { // emits dataChanged signal
+      qDebug() << "ItemPageListModel::setData: invalid index.row() " << index.row();
+    }
 
-    emit dataChanged(index, index);
+    //emit dataChanged(index, index);
     return true;
   }
 
-  QVariant data(const QModelIndex &index, int role) const override {
+  QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE {
     //qDebug() << "data" << index.column() << role;
 
     if (!index.isValid()) {
@@ -364,41 +593,78 @@ public:
     return result;
   }
 
-  void addPage(const std::shared_ptr<ItemListModel> page) {
+  void pushBack(const std::shared_ptr<ItemListModel> page) {
+    const int oldRows = itemsTotal();
+
+    /*
+        First is the new index of the first element that will be inserted.
+        Last is the new index of the last element that will be inserted.
+        Since we're appending only one element at the end of the list, the
+        index of the first and last elements is the same, and is equal to
+        the current size of the list.
+    */
+    const int first = oldRows;
+    const int last = first;
+    emit beginInsertRows(QModelIndex(), first, last);
+
     m_pages.push_back(page);
+
+    //QModelIndex indexItem = index(rowCount(QModelIndex()), static_cast<int>(Columns::Page));
+
+    //emit dataChanged(indexItem, indexItem);
+
+    emit endInsertRows();
   }
 
-  bool removePageAt(int index) {
-    if(index < 0 || index >= m_pages.size()) {
+  bool removeItemAt(int rowIndex) {
+    if(rowIndex < 0 || rowIndex >= m_pages.size()) {
       return false;
     }
 
-    m_pages.removeAt(index);
+    emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
+
+    m_pages.removeAt(rowIndex);
+
+    //QModelIndex indexItem = index(rowIndex, static_cast<int>(Columns::Page));
+    //emit dataChanged(indexItem, indexItem);
+
+    emit endRemoveRows();
+
     return true;
   }
 
-  bool replacePageAt(int index, std::shared_ptr<ItemListModel> newItem) {
-    if(index < 0 || index >= m_pages.size()) {
+  bool replaceItemAt(int rowIndex, std::shared_ptr<ItemListModel> newItem, QVector<int> roles = QVector<int>()) {
+    if(rowIndex < 0 || rowIndex >= m_pages.size()) {
       return false;
     }
 
-    m_pages.replace(index, newItem);
+    m_pages.replace(rowIndex, newItem);
+
+    QModelIndex indexItem = index(rowIndex, static_cast<int>(Columns::Page));
+    emit dataChanged(indexItem, indexItem, roles);
+
     return true;
   }
 
-  QList<std::shared_ptr<ItemListModel>> getPages() const {
+  const QList<std::shared_ptr<ItemListModel>> getItems() const {
     return m_pages;
   }
 
-  int pagesTotal() const {
+  int itemsTotal() const {
     return m_pages.size();
   }
 
-  void setPages(const QList<std::shared_ptr<ItemListModel>>& pages) {
-    m_pages = pages;
+  void setItems(const QList<std::shared_ptr<ItemListModel>>& items) {
+    removeAllItems(); // emit row remove signal
+
+    emit beginInsertRows(QModelIndex(), items.size(), items.size());
+
+    m_pages = items;
+
+    emit endInsertRows();
   }
 
-  const std::shared_ptr<ItemListModel> getPageAt(int index) const {
+  const std::shared_ptr<ItemListModel> getItemAt(int index) const {
     if(index < 0 || index >= m_pages.size()) {
       return nullptr;
     }
@@ -406,8 +672,12 @@ public:
     return m_pages.at(index);
   }
 
-  void removeAllPages() {
+  void removeAllItems() {
+    emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
+
     m_pages.clear();
+
+    emit endRemoveRows();
   }
 
 private:
@@ -415,7 +685,7 @@ private:
 };
 
 //Q_DECLARE_METATYPE(PagedItemModel)
-Q_DECLARE_METATYPE(PagedItemModel*)
+Q_DECLARE_METATYPE(ItemPageListModel*)
 //Q_DECLARE_METATYPE(std::shared_ptr<PagedItemModel>)
 
 class PagedItemMapper : public QDataWidgetMapper

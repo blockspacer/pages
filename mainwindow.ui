@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>603</width>
+    <height>436</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,15 +34,26 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>368</width>
-            <height>216</height>
+            <width>214</width>
+            <height>342</height>
            </rect>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
-           <item row="1" column="0">
+           <item row="3" column="0">
             <layout class="QVBoxLayout" name="scrollVerticalLayout"/>
            </item>
-           <item row="0" column="0">
+           <item row="1" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QCheckBox" name="checkBox">
+               <property name="text">
+                <string>Offline Mode</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="2" column="0">
             <layout class="QHBoxLayout" name="horizontalLayout">
              <item>
               <widget class="QPushButton" name="prevButton">
@@ -60,9 +71,39 @@
              </item>
             </layout>
            </item>
+           <item row="0" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <item>
+              <widget class="QLineEdit" name="searchEdit"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton">
+               <property name="text">
+                <string>search</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_2">
+               <property name="text">
+                <string>reset</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
           </layout>
          </widget>
         </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QTableView" name="tableView"/>
+       </item>
+       <item row="0" column="2">
+        <layout class="QVBoxLayout" name="verticalLayout"/>
+       </item>
+       <item row="0" column="4">
+        <widget class="QListView" name="listView"/>
        </item>
       </layout>
      </widget>
@@ -74,7 +115,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>400</width>
+     <width>603</width>
      <height>19</height>
     </rect>
    </property>

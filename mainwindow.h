@@ -11,6 +11,15 @@ namespace Ui {
 class MainWindow;
 }
 
+struct fetchedPageData {
+  QList<Item> items;
+  int totalPages;
+  int requestedPageSize;
+  int totalItems;
+  int requestedPageNum;
+  int recievedItemsCount;
+};
+
 class MainWindow : public QMainWindow
 {
 Q_OBJECT
