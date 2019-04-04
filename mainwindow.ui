@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>764</width>
-    <height>288</height>
+    <width>1280</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,7 +34,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>300</width>
+           <width>350</width>
            <height>0</height>
           </size>
          </property>
@@ -46,8 +46,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>298</width>
-            <height>204</height>
+            <width>348</width>
+            <height>716</height>
            </rect>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
@@ -72,11 +72,22 @@
                </property>
                <layout class="QHBoxLayout" name="horizontalLayout_5">
                 <item>
-                 <widget class="QCheckBox" name="checkBox">
-                  <property name="text">
-                   <string>Offline Mode</string>
-                  </property>
-                 </widget>
+                 <layout class="QVBoxLayout" name="verticalLayout_2">
+                  <item>
+                   <widget class="QCheckBox" name="checkBox">
+                    <property name="text">
+                     <string>Offline Mode</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="clearCacheOnPagingCheckBox">
+                    <property name="text">
+                     <string>Clear cache on paging</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                 <item>
                  <layout class="QFormLayout" name="formLayout">
@@ -90,7 +101,24 @@
                     </property>
                    </widget>
                   </item>
+                  <item row="3" column="0">
+                   <widget class="QSpinBox" name="pageNumSpinBox"/>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QLabel" name="label_2">
+                    <property name="text">
+                     <string>Go to page</string>
+                    </property>
+                   </widget>
+                  </item>
                  </layout>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="goToPageButton">
+                  <property name="text">
+                   <string>Go to page</string>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </widget>
@@ -165,6 +193,12 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="minimumSize">
+          <size>
+           <width>300</width>
+           <height>0</height>
+          </size>
+         </property>
         </widget>
        </item>
        <item row="0" column="5">
@@ -200,7 +234,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>764</width>
+     <width>1280</width>
      <height>19</height>
     </rect>
    </property>

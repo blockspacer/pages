@@ -10,7 +10,7 @@
 
 struct Item
 {
-    int guid; // TODO: change guid map when item changes
+    int guid;
     QString name;
     QString surname;
 };
@@ -30,6 +30,7 @@ public:
     Name = 0
     , Surname
     , GUID
+    , SourceMappedRowNum
     , Total
   };
 
@@ -254,10 +255,10 @@ public:
 
     m_items.push_back(item);
 
-    /*if (item) {
+    if (item) {
       int newGuid = static_cast<ItemModel*>(item->model())->getGUID();
-      m_guidToItem[newGuid] = item;
-    }*/
+      //m_guidToItem[newGuid] = item;
+    }
 
     emit endInsertRows();
 
@@ -274,16 +275,20 @@ public:
 
   bool removeItemAt(int rowIndex) {
     if(rowIndex < 0 || rowIndex >= itemsTotal()) {
+      //qDebug() << "removeItemAt skippeeeed"  <<  rowIndex;
       return false;
     }
+
+    //qDebug() << "removeItemAt"  <<  rowIndex;
 
     //auto idx = index(rowIndex, static_cast<int>(Columns::Item));
     emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
 
     std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
     if (prevItem.get()) {
-      //int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
+      int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
       //m_guidToItem.remove(oldGuid);
+
       m_items.removeAt(rowIndex);
     }
 
@@ -307,6 +312,8 @@ public:
 
   void setRowsTotalSpace(int totalRows) {
     const int diff = std::abs(totalRows - rowCount());
+    const int rowCountBeforeDelete = rowCount();
+    //qDebug() << "setRowsTotalSpace" << totalRows << rowCount() << diff;
     if (rowCount() < totalRows) {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
@@ -316,7 +323,7 @@ public:
     } else {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
-        removeItemAt(rowCount() - 1 - i);
+        removeItemAt(rowCountBeforeDelete - 1 - i);
       }
     }
   }
@@ -339,24 +346,24 @@ public:
     const int last = first;
     emit beginInsertRows(QModelIndex(), first, last);
 
-    /*std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
+    std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
     if (prevItem.get()) {
       ItemModel* itemModel = static_cast<ItemModel*>(prevItem->model());
       if(itemModel) {
         int oldGuid = itemModel->getGUID();
-        m_guidToItem.remove(oldGuid);
+        //m_guidToItem.remove(oldGuid);
       }
-    }*/
+    }
 
     m_items.replace(rowIndex, newItem);
 
-    /*{
+    {
       ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
       if(itemModel) {
         int newGuid = itemModel->getGUID();
-        m_guidToItem[newGuid] = newItem;
+        //m_guidToItem[newGuid] = newItem;
       }
-    }*/
+    }
 
     emit endInsertRows();
 
@@ -378,7 +385,6 @@ public:
   }
 
   int itemsTotal() const {
-    //Q_ASSERT(m_items.size() == m_guidToItem.size());
     return m_items.size();
   }
 
@@ -389,22 +395,18 @@ public:
 
     m_items = items;
 
-    /*for (auto& newItem: items) {
+    for (auto& newItem: items) {
       ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
       if(itemModel) {
         int newGuid = itemModel->getGUID();
-        m_guidToItem[newGuid] = newItem;
+        //m_guidToItem[newGuid] = newItem;
       }
-    }*/
+    }
 
     emit endInsertRows();
-
-    //Q_ASSERT(m_items.size() == m_guidToItem.size());
   }
 
   const std::shared_ptr<ItemMapper> getItemAt(int rowIndex) const {
-    //Q_ASSERT(m_items.size() == m_guidToItem.size());
-
     if(rowIndex < 0 || rowIndex >= m_items.size()) {
       return nullptr;
     }
@@ -413,8 +415,6 @@ public:
   }
 
   /*const std::shared_ptr<ItemMapper> getItemById(int guid) const {
-    //Q_ASSERT(m_items.size() == m_guidToItem.size());
-
     if(!m_guidToItem.contains(guid)) {
       qDebug() << "ItemListModel not contains guid = " << guid;
       return nullptr;
@@ -432,8 +432,6 @@ public:
     //m_guidToItem.clear();
 
     emit endRemoveRows();
-
-    //Q_ASSERT(m_items.size() == m_guidToItem.size());
   }
 
 private:
@@ -517,6 +515,9 @@ protected:
       case static_cast<int>(ItemModel::Columns::GUID):
         model->setGUID(value.toInt());
         break;
+      case static_cast<int>(ItemModel::Columns::SourceMappedRowNum):
+        //model->setGUID(value.toInt());
+        break;
     }
 
     emit dataChanged(index, index);
@@ -558,6 +559,9 @@ protected:
         break;
       case static_cast<int>(ItemModel::Columns::GUID):
         result = model->getGUID();
+        break;
+      case static_cast<int>(ItemModel::Columns::SourceMappedRowNum):
+        result = QVariant::fromValue(index.row());
         break;
     }
     return result;
@@ -855,14 +859,22 @@ protected:
       items.push_back(item);
     }*/
 
-    int pageStartCursor = 0;//index.row() * getPageSize();
+    int pageStartCursor = 0;//index.row();//0;//index.row() * getPageSize();
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
-      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
+      //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
+      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::SourceMappedRowNum));
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
       qDebug() << "pageStartCursor" << data << i;
       if (!data.isValid()) {
         continue;
       }
+
+      int SourceMappedRowNum = data.value<QVariant>().toInt();
+      std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(SourceMappedRowNum);
+      if (!item) {
+        continue;
+      }
+      items.push_back(item);
 
       /*int dataGUID = data.value<QVariant>().toInt();
       std::shared_ptr<ItemMapper> item = itemListModel->getItemById(dataGUID);
@@ -871,11 +883,11 @@ protected:
       }
       items.push_back(item);*/
 
-      std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(index.row() * getPageSize() + i);
+      /*std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(index.row() * getPageSize() + i);
       if (!item) {
         continue;
       }
-      items.push_back(item);
+      items.push_back(item);*/
     }
 
     result = QVariant::fromValue(items);

@@ -29,6 +29,7 @@ public:
   ~MainWindow();
 
 
+  void onDataFetched(std::shared_ptr<fetchedPageData> data);
 public slots:
   //void onCheckboxChanged(const int state);
 
@@ -40,6 +41,7 @@ private:
   PagedItemTableProxyFilterModel* m_filterItemTableProxyModel;
   PagedItemTableProxyFilterModel* m_pagedItemTableProxyModel;
   PagedItemListProxyFilterModel * m_pagedItemListProxyFilterModel;
+  QTimer* m_timer;
   ItemTableProxyModel* m_itemTableProxyModel;
   Ui::MainWindow *m_ui;
   std::shared_ptr<PagedItemMapper> m_pagedItemMapper;
