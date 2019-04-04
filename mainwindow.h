@@ -30,6 +30,7 @@ public:
 
 
   void onDataFetched(std::shared_ptr<fetchedPageData> data);
+  void onRowRangeChanged(int first, int last);
 public slots:
   //void onCheckboxChanged(const int state);
 

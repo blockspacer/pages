@@ -268,24 +268,6 @@ public:
     return true;
   }
 
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole)
-        return QVariant();
-
-    if (orientation == Qt::Horizontal)
-        return QString("Column %1").arg(section);
-    else
-        return QString("Row %1").arg(section);
-  }
-
-  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
-  {
-    if (!index.isValid())
-      return Qt::ItemIsEnabled;
-
-    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
-  }
-
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
     if (!index.isValid()) {
       return QVariant();
@@ -771,11 +753,12 @@ protected:
 
         //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
 
-        const bool anyFieldMatch = (isNameFiltered
+        const bool anyFieldMatch = (isNameFiltered //|| name.isEmpty()
                 //|| isSurnameFiltered
                 );
 
-        return !isHidden && anyFieldMatch && rowInRange(sourceRow);
+        return rowInRange(sourceRow) && anyFieldMatch && !isHidden;// && anyFieldMatch && rowInRange(sourceRow);
+        //return true;
         //return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
     }
 
@@ -854,7 +837,7 @@ public:
     return m_workMode;
   }
 
-  void setOnlinePagesTotal(int val) {
+  void setPagesTotal(int val) {
     m_onlinePagesTotal = val;
   }
 
@@ -872,7 +855,8 @@ public slots:
 protected:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
+    return getOnlinePagesTotal();
+    /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
       return getOnlinePagesTotal();
     }
 
@@ -883,7 +867,7 @@ protected:
       pagesTotal = res.rem ? (res.quot + 1) : res.quot;
     }
 
-    return pagesTotal;
+    return pagesTotal;*/
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
