@@ -54,6 +54,47 @@ public:
     return m_item.surname;
   }
 
+  QVariant getDataByColumn(int column) const {
+    QVariant result;
+    switch(column)
+    {
+      case static_cast<int>(Columns::Name):
+        result = getName();
+        break;
+      case static_cast<int>(Columns::Surname):
+        result = getSurname();
+        break;
+      case static_cast<int>(Columns::GUID):
+        result = getGUID();
+        break;
+    }
+    return result;
+  }
+
+  bool setDataByColumn(int column, const QVariant &value) {
+    if(column < 0 || column >= static_cast<int>(Columns::Total)) {
+      return false;
+    }
+
+    if(!value.isValid()) {
+      return false;
+    }
+
+    switch(column)
+    {
+      case static_cast<int>(Columns::Name):
+        setName(value.toString()); // emits dataChanged signal
+        break;
+      case static_cast<int>(Columns::Surname):
+        setSurname(value.toString()); // emits dataChanged signal
+        break;
+      case static_cast<int>(Columns::GUID):
+        setGUID(value.toInt()); // emits dataChanged signal
+        break;
+    }
+    return true;
+  }
+
   void setSurname(const QString& sString) {
     m_item.surname = sString;
 
@@ -90,39 +131,15 @@ public:
     if (!index.isValid())
       return false;
 
-    switch(index.column())
-    {
-      case static_cast<int>(Columns::Name):
-        setName(value.toString()); // emits dataChanged signal
-        break;
-      case static_cast<int>(Columns::Surname):
-        setSurname(value.toString()); // emits dataChanged signal
-        break;
-      case static_cast<int>(Columns::GUID):
-        setGUID(value.toInt()); // emits dataChanged signal
-        break;
-    }
-
-    return true;
+    return setDataByColumn(index.column(), value);
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
     if (!index.isValid())
       return false;
 
-    QVariant result;
-    switch(index.column())
-    {
-      case static_cast<int>(Columns::Name):
-        result = getName();
-        break;
-      case static_cast<int>(Columns::Surname):
-        result = getSurname();
-        break;
-      case static_cast<int>(Columns::GUID):
-        result = getGUID();
-        break;
-    }
+    QVariant result = getDataByColumn(index.column());
+
     return result;
   }
 
@@ -300,8 +317,8 @@ public:
     m_dummyItemMapper = std::make_shared<ItemMapper>();
     ItemModel* itemModel = new ItemModel();
     itemModel->setParent(m_dummyItemMapper.get());
-    itemModel->setName("");
-    itemModel->setSurname("");
+    //itemModel->setName("");
+    //itemModel->setSurname("");
     itemModel->setGUID(dummyItemId);
     /// \note allows two-way data editing
     m_dummyItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
@@ -509,24 +526,26 @@ protected:
       return false;
     }
 
-    switch(index.column())
-    {
-      case static_cast<int>(ItemModel::Columns::Name):
-        model->setName(value.toString());
-        break;
-      case static_cast<int>(ItemModel::Columns::Surname):
-        model->setSurname(value.toString());
-        break;
-      case static_cast<int>(ItemModel::Columns::GUID):
-        model->setGUID(value.toInt());
-        break;
-      case static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum):
-        //model->setGUID(value.toInt());
-        break;
+    bool isDataChanged = false;
+    if (index.column() < static_cast<int>(ItemModel::Columns::Total)) {
+      // return same data as in source item
+      isDataChanged = model->setDataByColumn(index.column(), value);
+    } else {
+      // custom columns
+      switch(index.column())
+      {
+        case static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum):
+          // skip, no data change here
+          isDataChanged = false;
+          break;
+      }
     }
 
-    emit dataChanged(index, index);
-    return true;
+    if (isDataChanged) {
+      emit dataChanged(index, index);
+    }
+
+    return isDataChanged;
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -554,20 +573,17 @@ protected:
       return result;
     }
 
-    switch(index.column())
-    {
-      case static_cast<int>(ItemModel::Columns::Name):
-        result = model->getName();
-        break;
-      case static_cast<int>(ItemModel::Columns::Surname):
-        result = model->getSurname();
-        break;
-      case static_cast<int>(ItemModel::Columns::GUID):
-        result = model->getGUID();
-        break;
-      case static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum):
-        result = QVariant::fromValue(index.row());
-        break;
+    if (index.column() < static_cast<int>(ItemModel::Columns::Total)) {
+      // return same data as in source item
+      result = model->getDataByColumn(index.column());
+    } else {
+      // custom columns
+      switch(index.column())
+      {
+        case static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum):
+          result = QVariant::fromValue(index.row());
+          break;
+      }
     }
     return result;
   }
