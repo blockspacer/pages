@@ -5,7 +5,7 @@
 class PagedModel
 {
 public:
-PagedModel();
+  PagedModel();
 };
 
 #endif // PAGEDMODEL_H

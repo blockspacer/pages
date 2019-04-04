@@ -1,11 +1,5 @@
 #include "pageditemmodel.h"
 
-/*PagedItemModel::PagedItemModel()
-{
-
-}
-*/
-
 void ItemTableProxyModel::slotSourceModelChanged()
 {
   disconnect(this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
@@ -49,9 +43,6 @@ void ItemTableProxyModel::slotRowsInserted(const QModelIndex& parent, int start,
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
 
-  //emit rowsInserted(mapFromSource(parent), first, last);
-  //qDebug() << "slotRowsInserted";
-
   if (start != 0 || start != end) {
       beginResetModel();
       //m_sourceRowCache.clear();
@@ -59,7 +50,6 @@ void ItemTableProxyModel::slotRowsInserted(const QModelIndex& parent, int start,
       return;
   }
 
-  //m_sourceRowCache.clear();
   QModelIndex treeIndex = mapFromSource(sourceModel()->index(start, 0));
   QModelIndex treeParent = treeIndex.parent();
   if (rowCount(treeParent) == 1) {
@@ -72,7 +62,6 @@ void ItemTableProxyModel::slotRowsInserted(const QModelIndex& parent, int start,
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-
 
 void PagedItemTableProxyFilterModel::slotSourceModelChanged()
 {
@@ -117,9 +106,6 @@ void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent,
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
 
-  //emit rowsInserted(mapFromSource(parent), first, last);
-  //qDebug() << "slotRowsInserted";
-
   if (start != 0 || start != end) {
       beginResetModel();
       //m_sourceRowCache.clear();
@@ -127,7 +113,6 @@ void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent,
       return;
   }
 
-  //m_sourceRowCache.clear();
   QModelIndex treeIndex = mapFromSource(sourceModel()->index(start, 0));
   QModelIndex treeParent = treeIndex.parent();
   if (rowCount(treeParent) == 1) {
@@ -139,9 +124,7 @@ void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent,
   }
 }
 
-
 /////////////////////////////////////////////////////////////////////////////////////////////
-
 
 void PagedItemListProxyFilterModel::slotSourceModelChanged()
 {
@@ -186,9 +169,6 @@ void PagedItemListProxyFilterModel::slotRowsInserted(const QModelIndex& parent, 
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
 
-  //emit rowsInserted(mapFromSource(parent), first, last);
-  //qDebug() << "slotRowsInserted";
-
   if (start != 0 || start != end) {
       beginResetModel();
       //m_sourceRowCache.clear();
@@ -196,7 +176,6 @@ void PagedItemListProxyFilterModel::slotRowsInserted(const QModelIndex& parent, 
       return;
   }
 
-  //m_sourceRowCache.clear();
   QModelIndex treeIndex = mapFromSource(sourceModel()->index(start, 0));
   QModelIndex treeParent = treeIndex.parent();
   if (rowCount(treeParent) == 1) {

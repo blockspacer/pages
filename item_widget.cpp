@@ -5,7 +5,7 @@ ItemWidget::ItemWidget(QWidget *parent) :
 QWidget(parent),
 m_ui(new Ui::ItemWidget)
 {
-m_ui->setupUi(this);
+  m_ui->setupUi(this);
 }
 
 void ItemWidget::setMapper(std::shared_ptr<ItemMapper> mapper) {
@@ -28,5 +28,5 @@ std::shared_ptr<ItemMapper> ItemWidget::getMapper() {
 
 ItemWidget::~ItemWidget()
 {
-delete m_ui;
+  delete m_ui;
 }

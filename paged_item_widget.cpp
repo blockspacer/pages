@@ -22,21 +22,15 @@ QVariant PagedItemWidget::getPersonsPage() const
 }
 
 const QByteArray PagedItemWidget::personsPagePropertyName() const {
-  /*for(int i = this->metaObject()->propertyOffset(); i < this->metaObject()->propertyCount(); ++i)
-    {
-          qDebug() << this->metaObject()->property(i).name() << this->metaObject()->property(i).read(this);
-    }*/
   const int propertyOffset = metaObject()->propertyOffset();
-  //qDebug() << metaObject()->property(propertyOffset).name();
   return metaObject()->property(propertyOffset).name();
 }
 
 void PagedItemWidget::setPersonsPage(const QVariant &val)
 {
-  qDebug() << "setPersonsPage" << val;
+  //qDebug() << "setPersonsPage" << val;
   m_PersonsPage = val;
 
-  //qDebug() << "PersonPageWidget clearPage";
   // remove all page widgets
   {
     QLayoutItem* item;
@@ -46,7 +40,6 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
       ItemWidget* itemW = (ItemWidget*)item->widget();
       itemW->removeMappings();
       item->widget()->deleteLater();
-      //item->deleteLater();
         delete item;
     }
   }
@@ -63,37 +56,6 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
 
     ui->scrollVerticalLayout->addWidget(itemWidget);
   }
-
-  /*std::shared_ptr<ItemListModel> itemListModel = qvariant_cast<std::shared_ptr<ItemListModel>>(val.value<QVariant>());
-  if (!itemListModel) {
-    return;
-  }
-
-  //qDebug() << "setPersonsPage rowCount" << itemListModel->rowCount(QModelIndex());
-
-  for (int i = 0; i < itemListModel->rowCount(QModelIndex()); i++) {
-    QModelIndex index = itemListModel->index(i, 0);
-    //qDebug() << "setPersonsPage index" << index;
-
-    //itemListModel->itemFromIndex(index_person);
-    QVariant itemMapperVariant = itemListModel->data(index, 0);
-    //qDebug() << "setPersonsPage itemMapperVariant" << itemMapperVariant;
-    std::shared_ptr<ItemMapper> itemMapper = qvariant_cast<std::shared_ptr<ItemMapper>>(itemMapperVariant.value<QVariant>());
-    if (!itemMapper) {
-      return;
-    }
-
-    ItemWidget* itemWidget = new ItemWidget();
-    itemWidget->setMapper(itemMapper);
-    itemWidget->setMappings();
-
-    //itemMapper->getModel()->setName("setName");
-
-    /// \note allows two-way data editing
-    itemMapper->toFirst();
-
-    ui->scrollVerticalLayout->addWidget(itemWidget);
-  }*/
 
   emit personsPageChanged(val);
 }
