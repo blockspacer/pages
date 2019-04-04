@@ -30,7 +30,6 @@ public:
     Name = 0
     , Surname
     , GUID
-    , SourceMappedRowNum
     , Total
   };
 
@@ -448,6 +447,12 @@ class ItemTableProxyModel : public QAbstractProxyModel
     Q_OBJECT
 
 public:
+  enum class Columns {
+     // adds exta column equal to row number of item in source model
+    SourceMappedRowNum = static_cast<int>(ItemModel::Columns::Total)
+    , Total
+  };
+
   explicit ItemTableProxyModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
     connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
   }
@@ -478,7 +483,7 @@ protected:
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    return static_cast<int>(ItemModel::Columns::Total);
+    return static_cast<int>(ItemTableProxyModel::Columns::Total);
   }
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
@@ -515,7 +520,7 @@ protected:
       case static_cast<int>(ItemModel::Columns::GUID):
         model->setGUID(value.toInt());
         break;
-      case static_cast<int>(ItemModel::Columns::SourceMappedRowNum):
+      case static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum):
         //model->setGUID(value.toInt());
         break;
     }
@@ -560,7 +565,7 @@ protected:
       case static_cast<int>(ItemModel::Columns::GUID):
         result = model->getGUID();
         break;
-      case static_cast<int>(ItemModel::Columns::SourceMappedRowNum):
+      case static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum):
         result = QVariant::fromValue(index.row());
         break;
     }
@@ -606,8 +611,9 @@ protected:
       return Qt::ItemIsEnabled;
 
    Qt::ItemFlags res;
-   if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+   if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
    {
+      // adds exta columns
       res = QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
    } else {
       res = sourceModel()->flags(mapToSource(index));
@@ -679,7 +685,7 @@ public:
     }
 
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-      return static_cast<int>(ItemModel::Columns::Total);
+      return static_cast<int>(ItemTableProxyModel::Columns::Total);
     }
 
 protected:
@@ -844,7 +850,7 @@ protected:
     QList<std::shared_ptr<ItemMapper>> items;
     /*int pageStartCursor = index.row() * getPageSize();
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
-      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
+      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::GUID));
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
       qDebug() << "pageStartCursor" << data << i;
       if (!data.isValid()) {
@@ -862,7 +868,7 @@ protected:
     int pageStartCursor = 0;//index.row();//0;//index.row() * getPageSize();
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
-      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::SourceMappedRowNum));
+      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
       qDebug() << "pageStartCursor" << data << i;
       if (!data.isValid()) {
@@ -912,7 +918,7 @@ protected:
     QModelIndex res;
     if(proxyIndex.isValid())
     {
-      if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+      if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
       {
          res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
       } else {
@@ -934,8 +940,9 @@ protected:
       return Qt::ItemIsEnabled;
 
    Qt::ItemFlags res;
-   if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+   if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
    {
+      // adds exta columns
       res = QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
    }
    else
