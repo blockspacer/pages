@@ -33,7 +33,7 @@ const QByteArray PagedItemWidget::personsPagePropertyName() const {
 
 void PagedItemWidget::setPersonsPage(const QVariant &val)
 {
-  //qDebug() << "setPersonsPage" << val;
+  qDebug() << "setPersonsPage" << val;
   m_PersonsPage = val;
 
   //qDebug() << "PersonPageWidget clearPage";
@@ -51,7 +51,20 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
     }
   }
 
-  std::shared_ptr<ItemListModel> itemListModel = qvariant_cast<std::shared_ptr<ItemListModel>>(val.value<QVariant>());
+  QList<std::shared_ptr<ItemMapper>> itemList = qvariant_cast<QList<std::shared_ptr<ItemMapper>>>(val.value<QVariant>());
+  for (int i = 0; i < itemList.size(); i++) {
+    std::shared_ptr<ItemMapper> itemMapper = itemList.at(i);
+    ItemWidget* itemWidget = new ItemWidget();
+    itemWidget->setMapper(itemMapper);
+    itemWidget->setMappings();
+
+    /// \note allows two-way data editing
+    itemMapper->toFirst();
+
+    ui->scrollVerticalLayout->addWidget(itemWidget);
+  }
+
+  /*std::shared_ptr<ItemListModel> itemListModel = qvariant_cast<std::shared_ptr<ItemListModel>>(val.value<QVariant>());
   if (!itemListModel) {
     return;
   }
@@ -80,7 +93,7 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
     itemMapper->toFirst();
 
     ui->scrollVerticalLayout->addWidget(itemWidget);
-  }
+  }*/
 
   emit personsPageChanged(val);
 }

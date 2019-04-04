@@ -405,11 +405,14 @@ public:
     //connect(item->model(), &QAbstractItemModel::dataChanged, this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
     const int itemRowId = oldRows + 1;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
-    connect(item->model(), &QAbstractItemModel::dataChanged, item->model(), [this, indexMapped](const QModelIndex first, QModelIndex last){
-      qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged";
+    /*connect(item->model(), &QAbstractItemModel::dataChanged, item->model(), [this, indexMapped](const QModelIndex first, QModelIndex last){
+      qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged" << indexMapped;
+      emit dataChanged(indexMapped, indexMapped);
+    });*/
+    connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
+      qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged" << indexMapped;
       emit dataChanged(indexMapped, indexMapped);
     });
-
   }
 
   bool removeItemAt(int rowIndex) {
@@ -950,6 +953,9 @@ private:
     //int lastRowSourceRowNum = -1;
 };
 
+Q_DECLARE_METATYPE(PagedItemTableProxyFilterModel*)
+Q_DECLARE_METATYPE(std::shared_ptr<PagedItemTableProxyFilterModel>)
+
 class ItemPageListModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -981,7 +987,7 @@ public:
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
-    qDebug() << "setData PagedItemModel " << value << value.toString();
+    qDebug() << "setData ItemPageListModel " << value << value.toString();
 
     if (!index.isValid()) {
       return false;
@@ -1136,7 +1142,7 @@ private:
 
 //Q_DECLARE_METATYPE(PagedItemModel)
 Q_DECLARE_METATYPE(ItemPageListModel*)
-//Q_DECLARE_METATYPE(std::shared_ptr<PagedItemModel>)
+Q_DECLARE_METATYPE(std::shared_ptr<ItemPageListModel>)
 
 class PagedItemMapper : public QDataWidgetMapper
 {
@@ -1230,5 +1236,255 @@ private:
 
 Q_DECLARE_METATYPE(PagedModel)
 Q_DECLARE_METATYPE(PagedModel*)*/
+
+
+class PagedItemListProxyFilterModel : public QAbstractProxyModel
+{
+    Q_OBJECT
+
+public:
+  enum class Columns {
+    Page = 0
+    , Total
+  };
+
+  explicit PagedItemListProxyFilterModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
+    connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
+  }
+
+  virtual ~PagedItemListProxyFilterModel() {
+  }
+
+  void setPageSize(int pageSize) {
+    m_pageSize = pageSize;
+  }
+
+  int getPageSize() const {
+    return m_pageSize;
+  }
+
+public slots:
+  void slotSourceModelChanged(void);
+  void slotDataChanged(const QModelIndex& first, const QModelIndex& last);
+  void slotRowsInserted(const QModelIndex& parent, int first, int last);
+  void slotRowsRemoved(const QModelIndex &parent, int start, int end);
+  void sourceReset();
+
+protected:
+
+  int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
+    //return sourceModel()->rowCount();
+    std::div_t res = std::div(sourceModel()->rowCount(), getPageSize());
+    // Fast ceiling of an integer division
+    int pagesTotal = res.rem ? (res.quot + 1) : res.quot;
+    return pagesTotal;
+  }
+
+  int columnCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
+    return static_cast<int>(Columns::Total);
+  }
+
+  bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
+  {
+    qDebug() << "setData ItemListModel " << value << value.toString();
+
+    if (!index.isValid()) {
+      return false;
+    }
+
+    /*ItemListModel* source = getSourceListModel();
+    if (!source) {
+      return false;
+    }
+
+    std::shared_ptr<ItemMapper> mapper = getSourceListModel()->getItemAt(index.row());
+    if(!mapper.get()) {
+      return false;
+    }
+
+    ItemModel* model = static_cast<ItemModel*>(mapper->model());
+    if(!model) {
+      return false;
+    }
+
+    switch(index.column())
+    {
+      case static_cast<int>(ItemModel::Columns::Name):
+        model->setName(value.toString());
+        break;
+      case static_cast<int>(ItemModel::Columns::Surname):
+        model->setSurname(value.toString());
+        break;
+      case static_cast<int>(ItemModel::Columns::GUID):
+        model->setGUID(value.toInt());
+        break;
+    }
+
+    emit dataChanged(index, index);
+    return true;*/
+
+    return false; // read only data
+  }
+
+  QVariant data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const Q_DECL_OVERRIDE {
+    //qDebug() << "data" << index.column() << role;
+
+    //return QVariant("QVariant");
+
+    if (role == Qt::SizeHintRole) {
+      return QVariant(QSize( 25, 25 ));
+    }
+
+    if(role != Qt::DisplayRole && role != Qt::EditRole){
+      return QVariant(); // disable tooltips, icons, e.t.c
+    }
+
+    if (!index.isValid()) {
+      return QVariant();
+    }
+
+    QVariant result;
+
+    //result = QString("page %1").arg(index.row());
+
+    PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
+    ItemTableProxyModel* itemTableProxyModel = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
+    ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel->sourceModel());
+    // m_itemListModelCache = std::make_shared<ItemListModel>();
+    //ItemTableProxyModel* itemTableProxyModel = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
+
+    QList<std::shared_ptr<ItemMapper>> items;
+    int pageStartCursor = index.row() * getPageSize();
+    for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
+      std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(i);
+      if (!item) {
+        continue;
+      }
+      items.push_back(item);
+    }
+
+    //if (role == Qt::DisplayRole)
+    //  return QVariant("QVariant");
+
+    /*if (index.column() == static_cast<int>(Columns::DebugName)) {
+      return QVariant(static_cast<ItemModel*>(item->model())->getName());
+    }*/
+
+    result = QVariant::fromValue(items);
+
+    /*std::shared_ptr<ItemMapper> mapper = getSourceListModel()->getItemAt(index.row());
+    if(!mapper.get()) {
+      return result;
+    }
+
+    ItemModel* model = static_cast<ItemModel*>(mapper->model());
+    if(!model) {
+      return result;
+    }
+
+    switch(index.column())
+    {
+      case static_cast<int>(ItemModel::Columns::Name):
+        result = model->getName();
+        break;
+      case static_cast<int>(ItemModel::Columns::Surname):
+        result = model->getSurname();
+        break;
+      case static_cast<int>(ItemModel::Columns::GUID):
+        result = model->getGUID();
+        break;
+    }*/
+
+    return result;
+  }
+
+  QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    QModelIndex res;
+    if(!parent.isValid())
+    {
+      res = createIndex(row, column);
+    }
+    return res;
+  }
+
+  QModelIndex parent(const QModelIndex & /*child*/) const Q_DECL_OVERRIDE {
+    return QModelIndex();
+  }
+
+  QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
+    QModelIndex res;
+    if(proxyIndex.isValid())
+    {
+      if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+      {
+         // res = createIndex(proxyIndex.row(), -1, (quintptr)-1);
+         res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
+      }
+      else// if(proxyIndex.column() < sourceModel()->columnCount())
+      {
+         res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
+      }
+      /*else
+      {
+         res = sourceModel()->index(proxyIndex.row(), proxyIndex.column()-m_nbCol);
+      }*/
+    }
+    return res;
+  }
+
+  QModelIndex mapFromSource(const QModelIndex &sourceIndex) const Q_DECL_OVERRIDE {
+    QModelIndex res;
+    /*if(!sourceIndex.isValid())
+    {
+      if((sourceIndex.row() > -1) &&
+         (sourceIndex.column() >= sourceModel()->columnCount() && sourceIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1)) &&
+         (sourceIndex.internalId() == (quintptr)(sourceIndex.column())))
+      {
+         res = index(sourceIndex.row(), sourceIndex.column());
+      }
+    }
+    else
+    {
+      res = index(sourceIndex.row(), sourceIndex.column());
+    }*/
+    res = index(sourceIndex.row(), sourceIndex.column());
+    return res;
+  }
+
+  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
+  {
+    if (!index.isValid())
+      return Qt::ItemIsEnabled;
+
+    /*return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;*/
+
+   Qt::ItemFlags res;
+   if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+   {
+      res = QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+   }
+   else
+   {
+      res = sourceModel()->flags(mapToSource(index));
+   }
+   return res;
+  }
+
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
+    if (role != Qt::DisplayRole)
+        return QVariant();
+
+    if (orientation == Qt::Horizontal)
+        return QString("Column: %1").arg(section);
+    else
+        return QString("Row: %1").arg(section);
+  }
+
+private:
+  int m_pageSize = 2;
+};
+
+Q_DECLARE_METATYPE(PagedItemListProxyFilterModel*)
+Q_DECLARE_METATYPE(std::shared_ptr<PagedItemListProxyFilterModel>)
 
 #endif // PAGEDITEMMODEL_H

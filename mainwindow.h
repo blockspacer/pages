@@ -39,11 +39,12 @@ public slots:
 private:
   PagedItemTableProxyFilterModel* m_filterItemTableProxyModel;
   PagedItemTableProxyFilterModel* m_pagedItemTableProxyModel;
+  PagedItemListProxyFilterModel * m_pagedItemListProxyFilterModel;
   ItemTableProxyModel* m_itemTableProxyModel;
   Ui::MainWindow *m_ui;
   std::shared_ptr<PagedItemMapper> m_pagedItemMapper;
   std::shared_ptr<ItemListModel> m_itemListModelCache;
-  ItemPageListModel* m_pagedItemModel;
+  //ItemPageListModel* m_pagedItemModel;
 };
 
 #endif // MAINWINDOW_H
