@@ -268,6 +268,24 @@ public:
     return true;
   }
 
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
+    if (role != Qt::DisplayRole)
+        return QVariant();
+
+    if (orientation == Qt::Horizontal)
+        return QString("Column %1").arg(section);
+    else
+        return QString("Row %1").arg(section);
+  }
+
+  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
+  {
+    if (!index.isValid())
+      return Qt::ItemIsEnabled;
+
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+  }
+
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
     if (!index.isValid()) {
       return QVariant();
