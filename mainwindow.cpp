@@ -160,20 +160,15 @@ static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(std::shared_ptr<
 
   for ( Item& item : result->items) {
     // replace item by rowNum or add new item
-    const std::shared_ptr<ItemMapper> itemMapper = model->getItemAt(itemPageCursor);
-    if (itemMapper) {
-      ItemModel* itemModel = createItemModel(item.guid, item.name, item.surname);
-      if (itemModel) {
-        std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
-        model->replaceItemAt(itemPageCursor, m_itemMapper);
-      }
-    } else { /// \note reserved items may be nullptr
-      ItemModel* itemModel = createItemModel(item.guid, item.name, item.surname);
-      if (itemModel) {
-        std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
-        /// \note reserving space guarantees that item to replace exists
-        model->replaceItemAt(itemPageCursor, m_itemMapper);
-      }
+    //const std::shared_ptr<ItemMapper> itemMapper = model->getItemAt(itemPageCursor);
+
+    ItemModel* itemModel = createItemModel(item.guid, item.name, item.surname);
+    if (itemModel) {
+      std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+      itemModel->setParent(m_itemMapper.get());
+      //model->pushBack(m_itemMapper);
+      /// \note reserving space guarantees that item to replace exists
+      model->replaceItemAt(itemPageCursor, m_itemMapper);
     }
 
     /*{

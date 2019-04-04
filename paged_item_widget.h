@@ -20,9 +20,9 @@ public:
   explicit PagedItemWidget(QWidget *parent = nullptr);
   ~PagedItemWidget();
 
-  QVariant getPersonsPage() const;
-
   const QByteArray personsPagePropertyName() const;
+
+  QVariant getPersonsPage() const;
 
   //void clearPage();
 

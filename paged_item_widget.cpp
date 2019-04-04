@@ -40,7 +40,7 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
       ItemWidget* itemW = (ItemWidget*)item->widget();
       itemW->removeMappings();
       item->widget()->deleteLater();
-        delete item;
+      delete item;
     }
   }
 
