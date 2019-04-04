@@ -8,11 +8,45 @@
 #ifndef PAGEDITEMMODEL_H
 #define PAGEDITEMMODEL_H
 
-struct Item
+class Item
 {
-    int guid;
-    QString name;
-    QString surname;
+public:
+  Item()
+    : m_guid(std::numeric_limits<int>::min()), m_name(""), m_surname("")
+  { }
+
+  Item(int guid, const QString& name, const QString& surname)
+    : m_guid(guid), m_name(name), m_surname(surname)
+  { }
+
+  QString getName() const {
+    return m_name;
+  }
+
+  void setName(const QString& sString) {
+    m_name = sString;
+  }
+
+  QString getSurname() const {
+    return m_surname;
+  }
+
+  void setSurname(const QString& sString) {
+    m_surname = sString;
+  }
+
+  int getGUID() const {
+    return m_guid;
+  }
+
+  void setGUID(const int GUID) {
+    m_guid = GUID;
+  }
+
+private:
+    int m_guid;
+    QString m_name;
+    QString m_surname;
 };
 
 Q_DECLARE_METATYPE(Item)
@@ -30,7 +64,7 @@ public:
     Name = 0
     , Surname
     , GUID
-    , ItemMode // custom
+    , ItemMode // custom column
     , Total
   };
 
@@ -47,11 +81,11 @@ public:
   }
 
   QString getName() const {
-    return m_item.name;
+    return m_item.getName();
   }
 
   void setName(const QString& sString) {
-    m_item.name = sString;
+    m_item.setName(sString);
 
     QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
     emit dataChanged(indexItem, indexItem);
@@ -70,7 +104,28 @@ public:
   }
 
   QString getSurname() const {
-    return m_item.surname;
+    return m_item.getSurname();
+  }
+
+  void setSurname(const QString& sString) {
+    m_item.setSurname(sString);
+
+    QModelIndex indexItem = index(0, static_cast<int>(Columns::Surname));
+    emit dataChanged(indexItem, indexItem);
+  }
+
+  int getGUID() const {
+    return m_item.getGUID();
+  }
+
+  void setGUID(const int GUID) {
+    const int prevGUID = m_item.getGUID();
+    m_item.setGUID(GUID);
+
+    emit guidChanged(prevGUID, m_item.getGUID());
+
+    QModelIndex indexItem = index(0, static_cast<int>(Columns::GUID));
+    emit dataChanged(indexItem, indexItem);
   }
 
   QVariant getDataByColumn(int column) const {
@@ -118,27 +173,6 @@ public:
         break;
     }
     return true;
-  }
-
-  void setSurname(const QString& sString) {
-    m_item.surname = sString;
-
-    QModelIndex indexItem = index(0, static_cast<int>(Columns::Surname));
-    emit dataChanged(indexItem, indexItem);
-  }
-
-  int getGUID() const {
-    return m_item.guid;
-  }
-
-  void setGUID(const int GUID) {
-    const int prevGUID = m_item.guid;
-    m_item.guid = GUID;
-
-    emit guidChanged(prevGUID, m_item.guid);
-
-    QModelIndex indexItem = index(0, static_cast<int>(Columns::GUID));
-    emit dataChanged(indexItem, indexItem);
   }
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
@@ -199,8 +233,6 @@ public:
     , Total
   };
 
-  //static const int dummyItemId = std::numeric_limits<int>::min();
-
   explicit ItemListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
     setDummyItemMapper();
   }
@@ -218,8 +250,6 @@ public:
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
-    //qDebug() << "setData ItemListModel " << value << value.toString();
-
     if (!index.isValid()) {
       return false;
     }
@@ -236,24 +266,6 @@ public:
     }
 
     return true;
-  }
-
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole)
-        return QVariant();
-
-    if (orientation == Qt::Horizontal)
-        return QString("Column %1").arg(section);
-    else
-        return QString("Row %1").arg(section);
-  }
-
-  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
-  {
-    if (!index.isValid())
-      return Qt::ItemIsEnabled;
-
-    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -309,7 +321,6 @@ public:
 
     if (item) {
       connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
-        //qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged" << indexMapped;
         emit dataChanged(indexMapped, indexMapped);
       });
     }
@@ -317,13 +328,9 @@ public:
 
   bool removeItemAt(int rowIndex) {
     if(rowIndex < 0 || rowIndex >= itemsTotal()) {
-      //qDebug() << "removeItemAt skippeeeed"  <<  rowIndex;
       return false;
     }
 
-    //qDebug() << "removeItemAt"  <<  rowIndex;
-
-    //auto idx = index(rowIndex, static_cast<int>(Columns::Item));
     emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
 
     std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
@@ -341,12 +348,11 @@ public:
 
   void setDummyItemMapper() {
     m_dummyItemMapper = std::make_shared<ItemMapper>();
+
     ItemModel* itemModel = new ItemModel();
     itemModel->setParent(m_dummyItemMapper.get());
-    //itemModel->setName("");
-    //itemModel->setSurname("");
-    //itemModel->setGUID(dummyItemId);
     itemModel->setItemMode(ItemModel::ItemMode::Hidden);
+
     /// \note allows two-way data editing
     m_dummyItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
     m_dummyItemMapper->setModel(itemModel);
@@ -356,11 +362,9 @@ public:
   void setRowsTotalSpace(int totalRows) {
     const int diff = std::abs(totalRows - rowCount());
     const int rowCountBeforeDelete = rowCount();
-    //qDebug() << "setRowsTotalSpace" << totalRows << rowCount() << diff;
     if (rowCount() < totalRows) {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
-        //pushBack(nullptr);
         pushBack(m_dummyItemMapper);
       }
     } else {
@@ -415,7 +419,6 @@ public:
 
     if (newItem) {
       connect(newItem->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
-        //qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged" << indexMapped;
         emit dataChanged(indexMapped, indexMapped);
       });
     }

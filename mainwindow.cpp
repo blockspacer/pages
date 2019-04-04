@@ -82,7 +82,7 @@ static QList<Item> retrieveRemoteFiltered(const QString& filter/*, const ItemLis
       // TODO
     }*/
 
-    filterItem = item.name; // TODO
+    filterItem = item.getName(); // TODO
 
     if(!filter.isEmpty() && !filterItem.contains(filter)) {
       //qDebug() << "skipped " << filterItem;
@@ -168,7 +168,7 @@ static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(bool clearCache,
     // replace item by rowNum or add new item
     //const std::shared_ptr<ItemMapper> itemMapper = model->getItemAt(itemPageCursor);
 
-    ItemModel* itemModel = createItemModel(item.guid, item.name, item.surname);
+    ItemModel* itemModel = createItemModel(item.getGUID(), item.getName(), item.getSurname());
     if (itemModel) {
       std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
       itemModel->setParent(m_itemMapper.get());
