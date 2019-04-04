@@ -216,8 +216,8 @@ m_ui(new Ui::MainWindow)
   m_pagedItemMapper = std::make_shared<PagedItemMapper>();
   m_filterItemTableProxyModel = new PagedItemTableProxyFilterModel();
   //m_filterItemTableProxyModel->setRowLimit(kItemsPerPage);
-  //m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
-  //m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
+  m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
+  m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
   m_pagedItemListProxyFilterModel = new PagedItemListProxyFilterModel();
   m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
   m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage); // limit items on widget page
@@ -331,7 +331,7 @@ m_ui(new Ui::MainWindow)
     onDataFetched(m_lastFetchedData);
 
     m_filterItemTableProxyModel->invalidate();
-    //m_pagedItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
 
     // allows dynamic loading while using pagination
     m_pagedItemMapper->setCurrentIndex(pageNum);
@@ -360,7 +360,7 @@ m_ui(new Ui::MainWindow)
     m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
 
     m_filterItemTableProxyModel->invalidate();
-    //m_pagedItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
 
     // allows dynamic loading while using pagination
     m_pagedItemMapper->setCurrentIndex(resetPageIndex);
@@ -383,7 +383,7 @@ m_ui(new Ui::MainWindow)
     onDataFetched(m_lastFetchedData);
 
     m_filterItemTableProxyModel->invalidate();
-    //m_pagedItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
 
      // allows dynamic loading while using pagination
      m_pagedItemMapper->setCurrentIndex(refreshPageIndex);
@@ -407,7 +407,7 @@ m_ui(new Ui::MainWindow)
     onDataFetched(m_lastFetchedData);
 
     m_filterItemTableProxyModel->invalidate();
-    //m_pagedItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
 
      // allows dynamic loading while using pagination
      m_pagedItemMapper->setCurrentIndex(resetPageIndex);
@@ -442,20 +442,26 @@ m_ui(new Ui::MainWindow)
   m_filterItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
   m_filterItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
   m_filterItemTableProxyModel->invalidate();
-  m_pagedItemListProxyFilterModel->setSourceModel(m_filterItemTableProxyModel);
 
-  /*m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
+  m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
   m_pagedItemTableProxyModel->setDynamicSortFilter(true);
   m_pagedItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
   m_pagedItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
   m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
-  m_pagedItemTableProxyModel->invalidate();*/
+  m_pagedItemTableProxyModel->invalidate();
 
-  m_ui->tableView->setModel(m_pagedItemListProxyFilterModel);
+  m_pagedItemListProxyFilterModel->setSourceModel(m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
+
+  m_ui->tableView->setModel(m_pagedItemTableProxyModel);
   m_ui->tableView->setColumnWidth(1, 150);
   m_ui->tableView->update();
   m_ui->tableView->show();
+
+  m_ui->tableView_2->setModel(m_filterItemTableProxyModel);
+  m_ui->tableView_2->setColumnWidth(1, 150);
+  m_ui->tableView_2->update();
+  m_ui->tableView_2->show();
 
   m_ui->listView->setModel(m_itemTableProxyModel);
   m_ui->listView->setModelColumn(0);
@@ -500,7 +506,7 @@ void MainWindow::onDataFetched(std::shared_ptr<fetchedPageData> data) {
     m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
     m_pagedItemListProxyFilterModel->setPagesTotal(m_lastFetchedData->totalPages);
     m_pagedItemListProxyFilterModel->setPageSize(m_lastFetchedData->requestedPageSize);
-    //m_pagedItemTableProxyModel->setRowLimit(m_lastFetchedData->requestedPageSize); // limit shown items on page
+    m_pagedItemTableProxyModel->setRowLimit(m_lastFetchedData->requestedPageSize); // limit shown items on page
   } else {
     m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
     //m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
@@ -514,7 +520,7 @@ void MainWindow::onDataFetched(std::shared_ptr<fetchedPageData> data) {
 
     m_pagedItemListProxyFilterModel->setPagesTotal(pagesTotal);
     m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
-    //m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
+    m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
   }
 }
 

@@ -40,7 +40,7 @@ public slots:
 
 private:
   PagedItemTableProxyFilterModel* m_filterItemTableProxyModel;
-  //PagedItemTableProxyFilterModel* m_pagedItemTableProxyModel;
+  PagedItemTableProxyFilterModel* m_pagedItemTableProxyModel;
   PagedItemListProxyFilterModel * m_pagedItemListProxyFilterModel;
   QTimer* m_timer;
   ItemTableProxyModel* m_itemTableProxyModel;

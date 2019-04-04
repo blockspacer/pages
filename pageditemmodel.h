@@ -738,7 +738,8 @@ protected:
 
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const Q_DECL_OVERRIDE {
         const QModelIndex indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
-        const bool isNameFiltered = sourceModel()->data(indexName).toString().contains(filterRegExp());
+        const QString name = sourceModel()->data(indexName).toString();
+        const bool isNameFiltered = name.contains(filterRegExp());
 
         const QModelIndex indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
         const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(filterRegExp());
@@ -900,10 +901,12 @@ protected:
 
     QVariant result;
 
+// m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
     PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
 
-    ItemTableProxyModel* itemTableProxyModel = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
-    ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel->sourceModel());
+    ItemTableProxyModel* itemTableProxyModel1 = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
+    ItemTableProxyModel* itemTableProxyModel2 = static_cast<ItemTableProxyModel*>(itemTableProxyModel1->sourceModel());
+    ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel2->sourceModel());
 
     QList<std::shared_ptr<ItemMapper>> items;
     /*int pageStartCursor = index.row() * getPageSize();
@@ -923,11 +926,11 @@ protected:
       items.push_back(item);
     }*/
 
-    int pageStartCursor = index.row() * getPageSize();
-    if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
+    int pageStartCursor = 0;//index.row() * getPageSize();
+    /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
       // in online mode we don`t cache data
       pageStartCursor = 0;
-    }
+    }*/
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
