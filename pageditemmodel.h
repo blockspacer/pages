@@ -495,7 +495,7 @@ public:
   const std::shared_ptr<ItemMapper> getItemById(int guid) const {
     Q_ASSERT(m_items.size() == m_guidToItem.size());
 
-    qDebug() << "m_guidToItem.size()" << m_guidToItem.size();
+    //qDebug() << "m_guidToItem.size()" << m_guidToItem.size();
 
     if(!m_guidToItem.contains(guid)) {
       qDebug() << "ItemListModel not contains guid = " << guid;
@@ -504,7 +504,7 @@ public:
 
     QHash<int, std::shared_ptr<ItemMapper>>::const_iterator it = m_guidToItem.find(guid);
 
-    qDebug() << "m_guidToItem.size() 3" << m_guidToItem.size();
+    //qDebug() << "m_guidToItem.size() 3" << m_guidToItem.size();
 
     return it.value();
   }
@@ -1248,6 +1248,12 @@ public:
     , Total
   };
 
+  enum class WorkMode {
+    Online = 0
+    , Offline
+    , Total
+  };
+
   explicit PagedItemListProxyFilterModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
     connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
   }
@@ -1263,6 +1269,22 @@ public:
     return m_pageSize;
   }
 
+  void setWorkMode(WorkMode mode) {
+    m_workMode = mode;
+  }
+
+  WorkMode getWorkMode() const {
+    return m_workMode;
+  }
+
+  void setOnlinePagesTotal(int val) {
+    m_onlinePagesTotal = val;
+  }
+
+  int getOnlinePagesTotal() const {
+    return m_onlinePagesTotal;
+  }
+
 public slots:
   void slotSourceModelChanged(void);
   void slotDataChanged(const QModelIndex& first, const QModelIndex& last);
@@ -1273,6 +1295,10 @@ public slots:
 protected:
 
   int rowCount(const QModelIndex &parent /*= QModelIndex()*/) const Q_DECL_OVERRIDE {
+    if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
+      return getOnlinePagesTotal();
+    }
+
     //return sourceModel()->rowCount();
     std::div_t res = std::div(sourceModel()->rowCount(), getPageSize());
     // Fast ceiling of an integer division
@@ -1348,6 +1374,7 @@ protected:
     //result = QString("page %1").arg(index.row());
 
     PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
+
     ItemTableProxyModel* itemTableProxyModel = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
     ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel->sourceModel());
     // m_itemListModelCache = std::make_shared<ItemListModel>();
@@ -1356,12 +1383,35 @@ protected:
     QList<std::shared_ptr<ItemMapper>> items;
     int pageStartCursor = index.row() * getPageSize();
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
-      std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(i);
+      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
+      QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
+      //qDebug() << "data = pagedItemTableProxyFilterModel" << data;
+      if (!data.isValid()) {
+        continue;
+      }
+      int dataGUID = data.value<QVariant>().toInt();
+
+      std::shared_ptr<ItemMapper> item = itemListModel->getItemById(dataGUID);
       if (!item) {
         continue;
       }
       items.push_back(item);
     }
+
+    /*ItemTableProxyModel* itemTableProxyModel = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
+    ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel->sourceModel());
+    // m_itemListModelCache = std::make_shared<ItemListModel>();
+    //ItemTableProxyModel* itemTableProxyModel = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
+
+    QList<std::shared_ptr<ItemMapper>> items;
+    int pageStartCursor = index.row() * getPageSize();
+    for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
+      std::shared_ptr<ItemMapper> item = itemListModel->getItemById(i);
+      if (!item) {
+        continue;
+      }
+      items.push_back(item);
+    }*/
 
     //if (role == Qt::DisplayRole)
     //  return QVariant("QVariant");
@@ -1482,6 +1532,8 @@ protected:
 
 private:
   int m_pageSize = 2;
+  WorkMode m_workMode = WorkMode::Total;
+  int m_onlinePagesTotal = -1;
 };
 
 Q_DECLARE_METATYPE(PagedItemListProxyFilterModel*)

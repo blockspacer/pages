@@ -158,6 +158,8 @@ static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(std::shared_ptr<
       qDebug() << "fetchRemoteItemsToModel added item " << item.guid << item.name << item.surname;
     }
   }
+
+  return result;
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -170,6 +172,8 @@ m_ui(new Ui::MainWindow)
   m_filterItemTableProxyModel = new PagedItemTableProxyFilterModel();
   m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
   m_pagedItemListProxyFilterModel = new PagedItemListProxyFilterModel();
+  m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
+  m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
   m_itemTableProxyModel = new ItemTableProxyModel();
   m_itemListModelCache = std::make_shared<ItemListModel>();
   //m_pagedItemModel = new ItemPageListModel(m_pagedItemMapper.get());
@@ -178,7 +182,7 @@ m_ui(new Ui::MainWindow)
   m_ui->prevButton->setEnabled(false);
   m_ui->nextButton->setEnabled(false);
 
-  {
+  /*{
     ItemModel* itemModel = createItemModel(0, "_0Alie", "Bork");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
@@ -203,7 +207,7 @@ m_ui(new Ui::MainWindow)
     ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
-  }
+  }*/
 
   /*{
     ItemModel* itemModel = createItemModel(3, "_3Hugo", "Geber");
@@ -254,8 +258,14 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, prevPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(m_lastFetchedData->totalPages);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     } else {
       m_lastFetchedData = nullptr;
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     }
 
     /*refreshPageWidgets(m_lastFetchedData);
@@ -300,8 +310,15 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, resetPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      qDebug() << "m_lastFetchedData" << m_lastFetchedData->totalPages;
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(m_lastFetchedData->totalPages);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     } else {
       m_lastFetchedData = nullptr;
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     }
 
     m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
@@ -390,8 +407,14 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, resetPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(m_lastFetchedData->totalPages);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     } else {
       m_lastFetchedData = nullptr;
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     }
 
     m_filterItemTableProxyModel->invalidate();
@@ -431,8 +454,14 @@ m_ui(new Ui::MainWindow)
     const int nextPageIndex = m_pagedItemMapper->currentIndex() + 1;
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_itemListModelCache, nextPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(m_lastFetchedData->totalPages);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     } else {
       m_lastFetchedData = nullptr;
+      m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
+      m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
+      m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     }
 
     /*refreshPageWidgets(m_lastFetchedData);
@@ -497,7 +526,7 @@ m_ui(new Ui::MainWindow)
   m_ui->tableView->update();
   m_ui->tableView->show();
 
-  m_ui->listView->setModel(m_pagedItemListProxyFilterModel);//m_itemTableProxyModel);
+  m_ui->listView->setModel(m_itemTableProxyModel);//m_itemTableProxyModel);
   //m_ui->listView->scroll(0,1);
   //m_ui->listView->setSpacing(7);
   //m_ui->listView->resize(170,170);
