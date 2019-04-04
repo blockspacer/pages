@@ -30,7 +30,7 @@ public:
     Name = 0
     , Surname
     , GUID
-    //, ItemMode // custom
+    , ItemMode // custom
     , Total
   };
 
@@ -86,9 +86,9 @@ public:
       case static_cast<int>(Columns::GUID):
         result = getGUID();
         break;
-      /*case static_cast<int>(Columns::ItemMode):
+      case static_cast<int>(Columns::ItemMode):
         result = static_cast<int>(getItemMode());
-        break;*/
+        break;
     }
     return result;
   }
@@ -113,9 +113,9 @@ public:
       case static_cast<int>(Columns::GUID):
         setGUID(value.toInt()); // emits dataChanged signal
         break;
-      /*case static_cast<int>(Columns::ItemMode):
+      case static_cast<int>(Columns::ItemMode):
         setItemMode(static_cast<ItemMode>(value.toInt())); // emits dataChanged signal
-        break;*/
+        break;
     }
     return true;
   }
@@ -199,7 +199,7 @@ public:
     , Total
   };
 
-  static const int dummyItemId = std::numeric_limits<int>::min();
+  //static const int dummyItemId = std::numeric_limits<int>::min();
 
   explicit ItemListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
     setDummyItemMapper();
@@ -345,7 +345,7 @@ public:
     itemModel->setParent(m_dummyItemMapper.get());
     //itemModel->setName("");
     //itemModel->setSurname("");
-    itemModel->setGUID(dummyItemId);
+    //itemModel->setGUID(dummyItemId);
     itemModel->setItemMode(ItemModel::ItemMode::Hidden);
     /// \note allows two-way data editing
     m_dummyItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
@@ -743,19 +743,19 @@ protected:
         const QModelIndex indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
         const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(filterRegExp());
 
-        /*const QModelIndex indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
+        const QModelIndex indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
         const ItemModel::ItemMode itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
         qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
-        const bool isHidden = itemMode == ItemModel::ItemMode::Hidden;*/
+        const bool isHidden = itemMode == ItemModel::ItemMode::Hidden;
 
-        bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
+        //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
 
         const bool anyFieldMatch = (isNameFiltered
                 //|| isSurnameFiltered
                 );
 
-        //return !isHidden && anyFieldMatch && rowInRange(sourceRow);
-        return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
+        return !isHidden && anyFieldMatch && rowInRange(sourceRow);
+        //return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
@@ -855,9 +855,13 @@ protected:
       return getOnlinePagesTotal();
     }
 
-    std::div_t res = std::div(sourceModel()->rowCount(), getPageSize());
-    // Fast ceiling of an integer division
-    int pagesTotal = res.rem ? (res.quot + 1) : res.quot;
+    int pagesTotal = 1;
+    if (getPageSize() != 0) {
+      std::div_t res = std::div(sourceModel()->rowCount(), getPageSize());
+      // Fast ceiling of an integer division
+      pagesTotal = res.rem ? (res.quot + 1) : res.quot;
+    }
+
     return pagesTotal;
   }
 
@@ -914,12 +918,22 @@ protected:
       items.push_back(item);
     }*/
 
-    int pageStartCursor = 0;//index.row();//0;//index.row() * getPageSize();
+    int pageStartCursor = index.row() * getPageSize();
+    if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
+      // in online mode we don`t cache data
+      pageStartCursor = 0;
+    }
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
-      qDebug() << "pageStartCursor" << data << i;
+
+      /*{
+        QModelIndex idx2 = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::Surname));
+        QVariant data2 = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
+        qDebug() << "pageStartCursor" << data2 << i;
+      }*/
+
       if (!data.isValid()) {
         continue;
       }

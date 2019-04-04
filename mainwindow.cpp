@@ -119,9 +119,12 @@ static std::shared_ptr<fetchedPageData> retrieveRemoteItems(int pageNum, int ite
     sentItems++;
   }
 
-  std::div_t res = std::div(filtered.size(), itemsPerPage);
-  // Fast ceiling of an integer division
-  int pageCount = res.rem ? (res.quot + 1) : res.quot;
+  int pageCount = 1;
+  if (itemsPerPage != 0) {
+    std::div_t res = std::div(filtered.size(), itemsPerPage);
+    // Fast ceiling of an integer division
+    pageCount = res.rem ? (res.quot + 1) : res.quot;
+  }
 
   result->items = dummyRemotePage;
   result->requestedPageNum = pageNum;
@@ -326,8 +329,8 @@ m_ui(new Ui::MainWindow)
     m_filterItemTableProxyModel->invalidate();
     m_pagedItemTableProxyModel->invalidate();
 
-     // allows dynamic loading while using pagination
-     m_pagedItemMapper->setCurrentIndex(pageNum);
+    // allows dynamic loading while using pagination
+    m_pagedItemMapper->setCurrentIndex(pageNum);
   });
 
   connect(m_ui->checkBox, &QCheckBox::stateChanged, [this](int state) {
