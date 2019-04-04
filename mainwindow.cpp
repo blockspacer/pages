@@ -431,7 +431,6 @@ m_ui(new Ui::MainWindow)
   m_filterItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
   m_filterItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
   m_filterItemTableProxyModel->invalidate();
-  m_pagedItemListProxyFilterModel->setSourceModel(m_filterItemTableProxyModel);
 
   m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
   m_pagedItemTableProxyModel->setDynamicSortFilter(true);
@@ -441,10 +440,17 @@ m_ui(new Ui::MainWindow)
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
   m_pagedItemTableProxyModel->invalidate();
 
+  m_pagedItemListProxyFilterModel->setSourceModel(m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
+
   m_ui->tableView->setModel(m_pagedItemTableProxyModel);
   m_ui->tableView->setColumnWidth(1, 150);
   m_ui->tableView->update();
   m_ui->tableView->show();
+
+  m_ui->tableView_2->setModel(m_filterItemTableProxyModel);
+  m_ui->tableView_2->setColumnWidth(1, 150);
+  m_ui->tableView_2->update();
+  m_ui->tableView_2->show();
 
   m_ui->listView->setModel(m_itemTableProxyModel);
   m_ui->listView->setModelColumn(0);
@@ -494,6 +500,9 @@ void MainWindow::onMapperIndexChanged(int pageNum) {
 
   m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);
+
+  //m_pagedItemListProxyFilterModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
+  //m_pagedItemListProxyFilterModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);
 
   m_ui->prevButton->setEnabled(pageNum > 0);
   m_ui->nextButton->setEnabled(pageNum < m_pagedItemMapper->model()->rowCount() - 1);
