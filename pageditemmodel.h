@@ -754,11 +754,11 @@ protected:
 
         //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
 
-        const bool anyFieldMatch = (isNameFiltered
+        const bool anyFieldMatch = (isNameFiltered //|| name.isEmpty()
                 //|| isSurnameFiltered
                 );
 
-        return rowInRange(sourceRow);// !isHidden;// && anyFieldMatch && rowInRange(sourceRow);
+        return rowInRange(sourceRow) && anyFieldMatch && !isHidden;// && anyFieldMatch && rowInRange(sourceRow);
         //return true;
         //return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
     }
@@ -838,7 +838,7 @@ public:
     return m_workMode;
   }
 
-  void setOnlinePagesTotal(int val) {
+  void setPagesTotal(int val) {
     m_onlinePagesTotal = val;
   }
 
@@ -856,7 +856,8 @@ public slots:
 protected:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
+    return getOnlinePagesTotal();
+    /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
       return getOnlinePagesTotal();
     }
 
@@ -867,7 +868,7 @@ protected:
       pagesTotal = res.rem ? (res.quot + 1) : res.quot;
     }
 
-    return pagesTotal;
+    return pagesTotal;*/
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {

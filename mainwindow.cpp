@@ -292,7 +292,9 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, prevPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
     } else {
+      onRowRangeChanged(prevPageIndex*kItemsPerPage, prevPageIndex*kItemsPerPage+kItemsPerPage);
       m_lastFetchedData = nullptr;
     }
     onDataFetched(m_lastFetchedData);
@@ -321,7 +323,9 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, pageNum, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
     } else {
+      onRowRangeChanged(pageNum*kItemsPerPage, pageNum*kItemsPerPage+kItemsPerPage);
       m_lastFetchedData = nullptr;
     }
     onDataFetched(m_lastFetchedData);
@@ -345,8 +349,10 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
     } else {
       m_lastFetchedData = nullptr;
+      onRowRangeChanged(resetPageIndex*kItemsPerPage, resetPageIndex*kItemsPerPage+kItemsPerPage);
     }
 
     onDataFetched(m_lastFetchedData);
@@ -373,6 +379,7 @@ m_ui(new Ui::MainWindow)
     m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
 
     m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, refreshPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+    onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
     onDataFetched(m_lastFetchedData);
 
     m_filterItemTableProxyModel->invalidate();
@@ -391,8 +398,10 @@ m_ui(new Ui::MainWindow)
 
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, ""/*, gFilterRole*/);
+      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
     } else {
       m_lastFetchedData = nullptr;
+      onRowRangeChanged(resetPageIndex*kItemsPerPage, resetPageIndex*kItemsPerPage+kItemsPerPage);
     }
 
     onDataFetched(m_lastFetchedData);
@@ -408,8 +417,10 @@ m_ui(new Ui::MainWindow)
     const int nextPageIndex = m_pagedItemMapper->currentIndex() + 1;
     if (!isDisconnected) {
       m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, nextPageIndex, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
+      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
      } else {
       m_lastFetchedData = nullptr;
+      onRowRangeChanged(nextPageIndex*kItemsPerPage, nextPageIndex*kItemsPerPage+kItemsPerPage);
     }
 
     onDataFetched(m_lastFetchedData);
@@ -475,21 +486,39 @@ m_ui(new Ui::MainWindow)
     QObject::connect(m_timer, &QTimer::timeout, [this](){
         m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, 0, kItemsPerPage, m_ui->searchEdit->text()/*, gFilterRole*/);
         onDataFetched(m_lastFetchedData);
+        onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+
         m_pagedItemMapper->toFirst();
     });
   }
 
 }
 
+void MainWindow::onRowRangeChanged(int first, int last) {
+  //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize);
+  //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+  m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(first);
+  m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(last);
+}
+
 void MainWindow::onDataFetched(std::shared_ptr<fetchedPageData> data) {
   if (m_lastFetchedData) {
     m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
-    m_pagedItemListProxyFilterModel->setOnlinePagesTotal(m_lastFetchedData->totalPages);
+    m_pagedItemListProxyFilterModel->setPagesTotal(m_lastFetchedData->totalPages);
     m_pagedItemListProxyFilterModel->setPageSize(m_lastFetchedData->requestedPageSize);
     m_pagedItemTableProxyModel->setRowLimit(m_lastFetchedData->requestedPageSize); // limit shown items on page
   } else {
     m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
-    m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
+    //m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
+
+    int pagesTotal = 1;
+    if (kItemsPerPage != 0) {
+      std::div_t res = std::div(m_filterItemTableProxyModel->rowCount(), kItemsPerPage);
+      // Fast ceiling of an integer division
+      pagesTotal = res.rem ? (res.quot + 1) : res.quot;
+    }
+
+    m_pagedItemListProxyFilterModel->setPagesTotal(pagesTotal);
     m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
     m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
   }
@@ -498,8 +527,8 @@ void MainWindow::onDataFetched(std::shared_ptr<fetchedPageData> data) {
 void MainWindow::onMapperIndexChanged(int pageNum) {
   m_ui->pageNumSpinBox->setValue(pageNum);
 
-  m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
-  m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);
+  //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
+  //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);
 
   //m_pagedItemListProxyFilterModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
   //m_pagedItemListProxyFilterModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);
