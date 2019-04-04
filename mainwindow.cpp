@@ -473,7 +473,7 @@ m_ui(new Ui::MainWindow)
 }
 
 void MainWindow::onDataFetched(std::shared_ptr<fetchedPageData> data) {
-  if (m_pagedItemListProxyFilterModel) {
+  if (m_lastFetchedData) {
     m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
     m_pagedItemListProxyFilterModel->setOnlinePagesTotal(m_lastFetchedData->totalPages);
     m_pagedItemListProxyFilterModel->setPageSize(m_lastFetchedData->requestedPageSize);
