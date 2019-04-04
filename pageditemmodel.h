@@ -156,7 +156,10 @@ public:
     , Total
   };
 
+  static const int dummyItemId = std::numeric_limits<int>::min();
+
   explicit ItemListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
+    setDummyItemMapper();
   }
 
   virtual ~ItemListModel() {
@@ -251,18 +254,22 @@ public:
 
     m_items.push_back(item);
 
-    int newGuid = static_cast<ItemModel*>(item->model())->getGUID();
-    m_guidToItem[newGuid] = item;
+    if (item) {
+      int newGuid = static_cast<ItemModel*>(item->model())->getGUID();
+      m_guidToItem[newGuid] = item;
+    }
 
     emit endInsertRows();
 
     const int itemRowId = oldRows + 1;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
 
-    connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
-      qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged" << indexMapped;
-      emit dataChanged(indexMapped, indexMapped);
-    });
+    if (item) {
+      connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
+        qDebug() << "connect(item->model(), &QAbstractItemModel::dataChanged" << indexMapped;
+        emit dataChanged(indexMapped, indexMapped);
+      });
+    }
   }
 
   bool removeItemAt(int rowIndex) {
@@ -270,14 +277,48 @@ public:
       return false;
     }
 
+    //auto idx = index(rowIndex, static_cast<int>(Columns::Item));
     emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
 
-    int oldGuid = static_cast<ItemModel*>(getItemAt(rowIndex)->model())->getGUID();
-    m_guidToItem.remove(oldGuid);
-    m_items.removeAt(rowIndex);
+    std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
+    if (prevItem.get()) {
+      int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
+      m_guidToItem.remove(oldGuid);
+      m_items.removeAt(rowIndex);
+    }
+
     emit endRemoveRows();
 
     return true;
+  }
+
+  void setDummyItemMapper() {
+    m_dummyItemMapper = std::make_shared<ItemMapper>();
+    ItemModel* itemModel = new ItemModel();
+    itemModel->setParent(m_dummyItemMapper.get());
+    itemModel->setName("");
+    itemModel->setSurname("");
+    itemModel->setGUID(dummyItemId);
+    /// \note allows two-way data editing
+    m_dummyItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
+    m_dummyItemMapper->setModel(itemModel);
+    m_dummyItemMapper->toFirst();
+  }
+
+  void setRowsTotalSpace(int totalRows) {
+    const int diff = std::abs(totalRows - rowCount());
+    if (rowCount() < totalRows) {
+      for (int i = 0; i < diff; i++) {
+        /// \note need to emit beginInsertRows/endInsertRows/e.t.c
+        //pushBack(nullptr);
+        pushBack(m_dummyItemMapper);
+      }
+    } else {
+      for (int i = 0; i < diff; i++) {
+        /// \note need to emit beginInsertRows/endInsertRows/e.t.c
+        removeItemAt(rowCount() - 1 - i);
+      }
+    }
   }
 
   bool replaceItemAt(int rowIndex, std::shared_ptr<ItemMapper> newItem, QVector<int> roles = QVector<int>()) {
@@ -285,8 +326,11 @@ public:
       return false;
     }
 
-    int oldGuid = static_cast<ItemModel*>(getItemAt(rowIndex)->model())->getGUID();
-    m_guidToItem.remove(oldGuid);
+    std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
+    if (prevItem.get()) {
+      int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
+      m_guidToItem.remove(oldGuid);
+    }
 
     m_items.replace(rowIndex, newItem);
 
@@ -304,7 +348,7 @@ public:
   }
 
   int itemsTotal() const {
-    Q_ASSERT(m_items.size() == m_guidToItem.size());
+    //Q_ASSERT(m_items.size() == m_guidToItem.size());
     return m_items.size();
   }
 
@@ -322,11 +366,11 @@ public:
 
     emit endInsertRows();
 
-    Q_ASSERT(m_items.size() == m_guidToItem.size());
+    //Q_ASSERT(m_items.size() == m_guidToItem.size());
   }
 
   const std::shared_ptr<ItemMapper> getItemAt(int rowIndex) const {
-    Q_ASSERT(m_items.size() == m_guidToItem.size());
+    //Q_ASSERT(m_items.size() == m_guidToItem.size());
 
     if(rowIndex < 0 || rowIndex >= m_items.size()) {
       return nullptr;
@@ -336,7 +380,7 @@ public:
   }
 
   const std::shared_ptr<ItemMapper> getItemById(int guid) const {
-    Q_ASSERT(m_items.size() == m_guidToItem.size());
+    //Q_ASSERT(m_items.size() == m_guidToItem.size());
 
     if(!m_guidToItem.contains(guid)) {
       qDebug() << "ItemListModel not contains guid = " << guid;
@@ -349,7 +393,6 @@ public:
   }
 
   void removeAllItems() {
-
     emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
 
     m_items.clear();
@@ -357,12 +400,13 @@ public:
 
     emit endRemoveRows();
 
-    Q_ASSERT(m_items.size() == m_guidToItem.size());
+    //Q_ASSERT(m_items.size() == m_guidToItem.size());
   }
 
 private:
   QHash<int, std::shared_ptr<ItemMapper>> m_guidToItem;
   QList<std::shared_ptr<ItemMapper>> m_items;
+  std::shared_ptr<ItemMapper> m_dummyItemMapper;
 };
 
 Q_DECLARE_METATYPE(ItemListModel*)
@@ -463,11 +507,13 @@ protected:
 
     std::shared_ptr<ItemMapper> mapper = getSourceListModel()->getItemAt(index.row());
     if(!mapper.get()) {
+      //result = "1";
       return result;
     }
 
     ItemModel* model = static_cast<ItemModel*>(mapper->model());
     if(!model) {
+      //result = "2";
       return result;
     }
 
@@ -588,9 +634,11 @@ public:
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
       auto filteredRows = QSortFilterProxyModel::rowCount();
+      qDebug() << "filteredRows1" << filteredRows;
 
       if (getRowLimit() >= 0)
         return std::min(filteredRows, getRowLimit());
+      qDebug() << "filteredRows2" << filteredRows;
 
       return filteredRows;
     }
@@ -608,11 +656,16 @@ protected:
         const QModelIndex indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
         const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(filterRegExp());
 
+        const QModelIndex indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
+        const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(filterRegExp());
+
+        bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
+
         const bool anyFieldMatch = (isNameFiltered
                 //|| isSurnameFiltered
                 );
 
-        return anyFieldMatch && rowInRange(sourceRow);
+        return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
@@ -636,157 +689,6 @@ private:
 
 Q_DECLARE_METATYPE(PagedItemTableProxyFilterModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<PagedItemTableProxyFilterModel>)
-
-class ItemPageListModel : public QAbstractListModel
-{
-    Q_OBJECT
-public:
-  enum class Columns {
-    Page = 0
-    , Total
-  };
-
-  explicit ItemPageListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
-  }
-
-  virtual ~ItemPageListModel() {
-  }
-
-  int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    return m_pages.size();
-  }
-
-  int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    return static_cast<int>(Columns::Total);
-  }
-
-  bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
-  {
-    //qDebug() << "setData ItemPageListModel " << value << value.toString();
-
-    if (!index.isValid()) {
-      return false;
-    }
-
-    std::shared_ptr<ItemListModel> item = qvariant_cast<std::shared_ptr<ItemListModel>>(value.value<QVariant>());
-    if (!item) {
-      return false;
-    }
-
-    QVector<int> roles;
-    roles << role;
-    if (!replaceItemAt(index.row(), item, roles)) { // emits dataChanged signal
-      qDebug() << "ItemPageListModel::setData: invalid index.row() " << index.row();
-    }
-
-    return true;
-  }
-
-  QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE {
-    //qDebug() << "data" << index.column() << role;
-
-    if (!index.isValid()) {
-      return false;
-    }
-
-    QVariant result;
-
-    std::shared_ptr<ItemListModel> item = m_pages.at(index.row());
-
-    if (!item)
-      return false;
-
-    result = QVariant::fromValue(item);
-
-    return result;
-  }
-
-  void pushBack(const std::shared_ptr<ItemListModel> page) {
-    const int oldRows = itemsTotal();
-
-    /*
-        First is the new index of the first element that will be inserted.
-        Last is the new index of the last element that will be inserted.
-        Since we're appending only one element at the end of the list, the
-        index of the first and last elements is the same, and is equal to
-        the current size of the list.
-    */
-    const int first = oldRows;
-    const int last = first;
-    emit beginInsertRows(QModelIndex(), first, last);
-
-    m_pages.push_back(page);
-
-    emit endInsertRows();
-  }
-
-  bool removeItemAt(int rowIndex) {
-    if(rowIndex < 0 || rowIndex >= m_pages.size()) {
-      return false;
-    }
-
-    emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
-
-    m_pages.removeAt(rowIndex);
-
-    emit endRemoveRows();
-
-    return true;
-  }
-
-  bool replaceItemAt(int rowIndex, std::shared_ptr<ItemListModel> newItem, QVector<int> roles = QVector<int>()) {
-    if(rowIndex < 0 || rowIndex >= m_pages.size()) {
-      return false;
-    }
-
-    m_pages.replace(rowIndex, newItem);
-
-    QModelIndex indexItem = index(rowIndex, static_cast<int>(Columns::Page));
-    emit dataChanged(indexItem, indexItem, roles);
-
-    return true;
-  }
-
-  const QList<std::shared_ptr<ItemListModel>> getItems() const {
-    return m_pages;
-  }
-
-  int itemsTotal() const {
-    return m_pages.size();
-  }
-
-  void setItems(const QList<std::shared_ptr<ItemListModel>>& items) {
-    removeAllItems(); // emit row remove signal
-
-    emit beginInsertRows(QModelIndex(), items.size(), items.size());
-
-    m_pages = items;
-
-    emit endInsertRows();
-  }
-
-  const std::shared_ptr<ItemListModel> getItemAt(int index) const {
-    if(index < 0 || index >= m_pages.size()) {
-      return nullptr;
-    }
-
-    return m_pages.at(index);
-  }
-
-  void removeAllItems() {
-    emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
-
-    m_pages.clear();
-
-    emit endRemoveRows();
-  }
-
-private:
-  QList<std::shared_ptr<ItemListModel>> m_pages;
-};
-
-Q_DECLARE_METATYPE(ItemPageListModel*)
-Q_DECLARE_METATYPE(std::shared_ptr<ItemPageListModel>)
 
 class PagedItemMapper : public QDataWidgetMapper
 {
@@ -905,10 +807,28 @@ protected:
     ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel->sourceModel());
 
     QList<std::shared_ptr<ItemMapper>> items;
-    int pageStartCursor = index.row() * getPageSize();
+    /*int pageStartCursor = index.row() * getPageSize();
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
+      qDebug() << "pageStartCursor" << data << i;
+      if (!data.isValid()) {
+        continue;
+      }
+      int dataGUID = data.value<QVariant>().toInt();
+
+      std::shared_ptr<ItemMapper> item = itemListModel->getItemById(dataGUID);
+      if (!item) {
+        continue;
+      }
+      items.push_back(item);
+    }*/
+
+    int pageStartCursor = 0;//index.row() * getPageSize();
+    for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
+      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
+      QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
+      qDebug() << "pageStartCursor" << data << i;
       if (!data.isValid()) {
         continue;
       }
