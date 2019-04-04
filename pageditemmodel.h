@@ -30,6 +30,13 @@ public:
     Name = 0
     , Surname
     , GUID
+    //, ItemMode // custom
+    , Total
+  };
+
+  enum class ItemMode {
+    Visible = 0
+    , Hidden
     , Total
   };
 
@@ -46,6 +53,18 @@ public:
   void setName(const QString& sString) {
     m_item.name = sString;
 
+    QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
+    emit dataChanged(indexItem, indexItem);
+  }
+
+  ItemMode getItemMode() const {
+    return m_itemMode;
+  }
+
+  void setItemMode(const ItemMode& mode) {
+    m_itemMode = mode;
+
+    // need to emit dataChanged with any column
     QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
     emit dataChanged(indexItem, indexItem);
   }
@@ -67,6 +86,9 @@ public:
       case static_cast<int>(Columns::GUID):
         result = getGUID();
         break;
+      /*case static_cast<int>(Columns::ItemMode):
+        result = static_cast<int>(getItemMode());
+        break;*/
     }
     return result;
   }
@@ -91,6 +113,9 @@ public:
       case static_cast<int>(Columns::GUID):
         setGUID(value.toInt()); // emits dataChanged signal
         break;
+      /*case static_cast<int>(Columns::ItemMode):
+        setItemMode(static_cast<ItemMode>(value.toInt())); // emits dataChanged signal
+        break;*/
     }
     return true;
   }
@@ -145,6 +170,7 @@ public:
 
 private:
   Item m_item;
+  ItemMode m_itemMode = ItemMode::Visible;
 };
 
 Q_DECLARE_METATYPE(ItemModel*)
@@ -271,10 +297,10 @@ public:
 
     m_items.push_back(item);
 
-    if (item) {
+    /*if (item) {
       int newGuid = static_cast<ItemModel*>(item->model())->getGUID();
-      //m_guidToItem[newGuid] = item;
-    }
+      m_guidToItem[newGuid] = item;
+    }*/
 
     emit endInsertRows();
 
@@ -302,7 +328,7 @@ public:
 
     std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
     if (prevItem.get()) {
-      int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
+      //int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
       //m_guidToItem.remove(oldGuid);
 
       m_items.removeAt(rowIndex);
@@ -320,6 +346,7 @@ public:
     //itemModel->setName("");
     //itemModel->setSurname("");
     itemModel->setGUID(dummyItemId);
+    itemModel->setItemMode(ItemModel::ItemMode::Hidden);
     /// \note allows two-way data editing
     m_dummyItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
     m_dummyItemMapper->setModel(itemModel);
@@ -362,24 +389,24 @@ public:
     const int last = first;
     emit beginInsertRows(QModelIndex(), first, last);
 
-    std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
+    /*std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
     if (prevItem.get()) {
       ItemModel* itemModel = static_cast<ItemModel*>(prevItem->model());
       if(itemModel) {
         int oldGuid = itemModel->getGUID();
-        //m_guidToItem.remove(oldGuid);
+        m_guidToItem.remove(oldGuid);
       }
-    }
+    }*/
 
     m_items.replace(rowIndex, newItem);
 
-    {
+    /*{
       ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
       if(itemModel) {
         int newGuid = itemModel->getGUID();
-        //m_guidToItem[newGuid] = newItem;
+        m_guidToItem[newGuid] = newItem;
       }
-    }
+    }*/
 
     emit endInsertRows();
 
@@ -411,13 +438,13 @@ public:
 
     m_items = items;
 
-    for (auto& newItem: items) {
+    /*for (auto& newItem: items) {
       ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
       if(itemModel) {
         int newGuid = itemModel->getGUID();
-        //m_guidToItem[newGuid] = newItem;
+        m_guidToItem[newGuid] = newItem;
       }
-    }
+    }*/
 
     emit endInsertRows();
   }
@@ -716,12 +743,18 @@ protected:
         const QModelIndex indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
         const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(filterRegExp());
 
+        /*const QModelIndex indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
+        const ItemModel::ItemMode itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
+        qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
+        const bool isHidden = itemMode == ItemModel::ItemMode::Hidden;*/
+
         bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
 
         const bool anyFieldMatch = (isNameFiltered
                 //|| isSurnameFiltered
                 );
 
+        //return !isHidden && anyFieldMatch && rowInRange(sourceRow);
         return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
     }
 
