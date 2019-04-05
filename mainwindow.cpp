@@ -3,11 +3,16 @@
 #include "item_widget.h"
 #include "paged_item_widget.h"
 
-/// \note place no more than kItemsPerPage items into each ItemListModel
+#if defined(QT_TESTLIB_LIB) && QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
+#include <QAbstractItemModelTester>
+#endif
 
+/// \note place no more than kItemsPerPage items into each ItemListModel
 static int kItemsPerPage = 2;
 
 static bool isDisconnected = false;
+
+static bool enableAbstractItemModelTester = true;
 
 //static ItemListModel::Roles gFilterRole = ItemListModel::Roles::Name;
 
@@ -67,12 +72,12 @@ static std::shared_ptr<ItemMapper> createItemMapper(ItemModel* itemModel) {
   return itemMapper;
 }
 
-static ItemWidget* createItemWidget(std::shared_ptr<ItemMapper> itemMapper) {
+/*static ItemWidget* createItemWidget(std::shared_ptr<ItemMapper> itemMapper) {
   ItemWidget* itemWidget = new ItemWidget();
   itemWidget->setMapper(itemMapper);
   itemWidget->setMappings();
   return itemWidget;
-}
+}*/
 
 static QList<Item> retrieveRemoteFiltered(const FilterSettings& filter/*, const ItemListModel::Roles& filterRole*/) {
   QList<Item> result;
@@ -206,13 +211,29 @@ m_ui(new Ui::MainWindow)
   m_ui->setupUi(this);
 
   m_pagedItemMapper = std::make_shared<PagedItemMapper>();
+
   m_filterItemTableProxyModel = new PagedItemTableProxyFilterModel();
+
+  // dynamicSortFilter ensures that the model is sorted and filtered whenever
+  // the contents of the source model change.
+  m_filterItemTableProxyModel->setDynamicSortFilter(true);
+
   //m_filterItemTableProxyModel->setRowLimit(kItemsPerPage);
+
   m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
+
   m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
+
+  // dynamicSortFilter ensures that the model is sorted and filtered whenever
+  // the contents of the source model change.
+  m_pagedItemTableProxyModel->setDynamicSortFilter(true);
+
   m_pagedItemListProxyFilterModel = new PagedItemListProxyFilterModel();
+
   //m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Offline);
+
   m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage); // limit items on widget page
+
   m_itemTableProxyModel = new ItemTableProxyModel();
   m_itemListModelCache = std::make_shared<ItemListModel>();
   m_itemTableProxyModel->setSourceModel(m_itemListModelCache.get());
@@ -226,11 +247,11 @@ m_ui(new Ui::MainWindow)
   //m_ui->refreshButton->setEnabled(false);
   m_ui->refreshButton->setEnabled(true);
 
-  {
+  /*{
     ItemModel* itemModel = createItemModel(0, "_0Alie", "Bork");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
-    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
   }
@@ -239,7 +260,7 @@ m_ui(new Ui::MainWindow)
     ItemModel* itemModel = createItemModel(1, "_1Bob", "Byorn");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
-    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
   }
@@ -248,7 +269,7 @@ m_ui(new Ui::MainWindow)
     ItemModel* itemModel = createItemModel(2, "_2Anna", "Kerman");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
-    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
   }
@@ -257,7 +278,7 @@ m_ui(new Ui::MainWindow)
     ItemModel* itemModel = createItemModel(3, "_3Hugo", "Geber");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
-    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
   }
@@ -266,10 +287,10 @@ m_ui(new Ui::MainWindow)
     ItemModel* itemModel = createItemModel(4, "_4Borat", "Nagler");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
-    ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
-  }
+  }*/
 
   m_pagedItemMapper->setModel(m_pagedItemListProxyFilterModel);
   m_pagedItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
@@ -309,6 +330,7 @@ m_ui(new Ui::MainWindow)
   });
 
   connect(m_ui->pageSizeSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int state) {
+    Q_UNUSED(this);
     kItemsPerPage = state;
   });
 
@@ -348,6 +370,8 @@ m_ui(new Ui::MainWindow)
   });
 
   connect(m_ui->checkBox, &QCheckBox::stateChanged, [this](int state) {
+    Q_UNUSED(this);
+
     isDisconnected = state > 0 ? true : false;
     qDebug() << "isDisconnected = " << isDisconnected;
     //m_ui->refreshButton->setEnabled(!isDisconnected);
@@ -509,12 +533,14 @@ m_ui(new Ui::MainWindow)
   m_pagedItemListProxyFilterModel->setDataSource(m_itemListModelCache.get());
 
   m_ui->tableView->setModel(m_pagedItemTableProxyModel);
-  m_ui->tableView->setColumnWidth(1, 150);
+  m_ui->tableView->setColumnWidth(0, 150); // name
+  m_ui->tableView->setColumnWidth(1, 150); // surname
   m_ui->tableView->update();
   m_ui->tableView->show();
 
   m_ui->tableView_2->setModel(m_filterItemTableProxyModel);
-  m_ui->tableView_2->setColumnWidth(1, 150);
+  m_ui->tableView_2->setColumnWidth(0, 150); // name
+  m_ui->tableView_2->setColumnWidth(1, 150); // surname
   m_ui->tableView_2->update();
   m_ui->tableView_2->show();
 
@@ -550,6 +576,15 @@ m_ui(new Ui::MainWindow)
         //m_pagedItemMapper->submit();
     });
   }
+
+#if defined(QT_TESTLIB_LIB) && QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
+  if (enableAbstractItemModelTester) {
+    //new QAbstractItemModelTester(m_filterItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    //new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    //new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    //new QAbstractItemModelTester(m_itemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+  }
+#endif
 
 }
 
@@ -617,6 +652,11 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
 
 void MainWindow::onMapperIndexChanged(int pageNum) {
   m_ui->pageNumSpinBox->setValue(pageNum);
+
+
+  // Invalidates the current sorting and filtering.
+  m_filterItemTableProxyModel->invalidate();
+  m_pagedItemTableProxyModel->invalidate();
 
   //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(pageNum*kItemsPerPage);
   //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(pageNum*kItemsPerPage+kItemsPerPage);

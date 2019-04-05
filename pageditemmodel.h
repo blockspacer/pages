@@ -176,15 +176,18 @@ public:
   }
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
     return 1;
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
     return static_cast<int>(Columns::Total);
   }
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
+    Q_UNUSED(role);
     //qDebug() << "setData PersonsModel " << value << value.toString();
 
     if (!index.isValid()) {
@@ -195,6 +198,8 @@ public:
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
+    Q_UNUSED(role);
+
     if (!index.isValid()) {
       return false;
     }
@@ -243,10 +248,14 @@ public:
   }
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
     return m_items.size();
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
     return static_cast<int>(Columns::Total);
   }
 
@@ -285,11 +294,12 @@ public:
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    if (!index.isValid()) {
+    /*if (!index.isValid()) {
       return Qt::ItemIsEnabled;
     }
 
-    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;*/
+    return 0;
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -344,7 +354,10 @@ public:
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
 
     if (item) {
-      connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
+      connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last) {
+        Q_UNUSED(first);
+        Q_UNUSED(last);
+
         emit dataChanged(indexMapped, indexMapped);
       });
     }
@@ -400,6 +413,8 @@ public:
   }
 
   bool replaceItemAt(int rowIndex, std::shared_ptr<ItemMapper> newItem, QVector<int> roles = QVector<int>()) {
+    Q_UNUSED(roles);
+
     if(rowIndex < 0 || rowIndex >= itemsTotal()) {
       return false;
     }
@@ -443,6 +458,9 @@ public:
 
     if (newItem) {
       connect(newItem->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
+        Q_UNUSED(first);
+        Q_UNUSED(last);
+
         emit dataChanged(indexMapped, indexMapped);
       });
     }
@@ -545,6 +563,8 @@ protected:
   }
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
     ItemListModel* source = getSourceListModel();
     if (!source) {
       return 0;
@@ -554,11 +574,15 @@ protected:
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
     return static_cast<int>(ItemTableProxyModel::Columns::Total);
   }
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
+    Q_UNUSED(role);
+
     qDebug() << "setData ItemListModel " << value << value.toString();
 
     if (!index.isValid()) {
@@ -653,6 +677,10 @@ protected:
 
   // Returns the parent of the model index, or QModelIndex() if it has no parent.
   QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+    Q_UNUSED(child);
+
+    //return QAbstractProxyModel::parent(child);
+
     /*int offset = child.internalId();
     if (offset == 0 || !child.isValid())
         return QModelIndex();
@@ -673,7 +701,7 @@ protected:
 
     if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
     {
-       res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
+       res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
     } else {
        res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
     }
@@ -689,7 +717,7 @@ protected:
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    if (!index.isValid()) {
+    /*if (!index.isValid()) {
       return Qt::ItemIsEnabled;
     }
 
@@ -701,7 +729,9 @@ protected:
    } else {
       res = sourceModel()->flags(mapToSource(index));
    }
-   return res;
+   return res;*/
+   //return QAbstractProxyModel::flags(index);
+   return 0;
   }
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -760,6 +790,8 @@ public:
     }
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+      Q_UNUSED(parent);
+
       auto filteredRows = QSortFilterProxyModel::rowCount();
       //qDebug() << "filteredRows1" << filteredRows;
 
@@ -771,6 +803,7 @@ public:
     }
 
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+      Q_UNUSED(parent);
       return static_cast<int>(ItemTableProxyModel::Columns::Total);
     }
 
@@ -932,6 +965,8 @@ public slots:
 protected:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
     return getPagesTotal();
 
     /// \note need to show something to user, so we will add empty page if no pages recieved
@@ -952,11 +987,16 @@ protected:
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
     return static_cast<int>(Columns::Total);
   }
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
+    Q_UNUSED(value);
+    Q_UNUSED(role);
+
     //qDebug() << "setData ItemListModel " << value << value.toString();
 
     if (!index.isValid()) {
@@ -1069,6 +1109,8 @@ protected:
 
   // Returns the parent of the model index, or QModelIndex() if it has no parent.
   QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+    Q_UNUSED(child);
+
     return QModelIndex();
   }
 
@@ -1082,7 +1124,7 @@ protected:
 
     if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
     {
-       res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
+       res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
     } else {
        res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
     }
@@ -1098,7 +1140,8 @@ protected:
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    if (!index.isValid()) {
+    return 0;
+    /*if (!index.isValid()) {
       return Qt::ItemIsEnabled;
     }
 
@@ -1110,7 +1153,7 @@ protected:
    } else {
       res = sourceModel()->flags(mapToSource(index));
    }
-   return res;
+   return res;*/
   }
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {

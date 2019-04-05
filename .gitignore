@@ -53,3 +53,8 @@ CMakeLists.txt.user*
 *node_modules*
 
 *_plugin_import.cpp
+*.svg
+/qtloader.js
+/paged.html
+*.wasm
+/paged.js
