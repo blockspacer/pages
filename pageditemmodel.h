@@ -300,7 +300,7 @@ public:
 
     QVector<int> roles;
     roles << role;
-    if (!replaceItemAt(index.row(), itemMapper, roles)) { // emits dataChanged signal
+    if (!replaceItemAt(index.row(), itemMapper, roles)) { // emits changed signal
       qDebug() << "ItemListModel::setData: invalid index.row() " << index.row();
     }
 
@@ -418,7 +418,7 @@ public:
 
     emit endInsertRows();
 
-    const int itemRowId = oldRows + 1;
+    /*const int itemRowId = oldRows + 1;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
 
     if (item) {
@@ -428,7 +428,7 @@ public:
 
         emit dataChanged(indexMapped, indexMapped);
       });
-    }
+    }*/
   }
 
   bool removeItemAt(int rowIndex) {
@@ -557,7 +557,7 @@ public:
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
     emit dataChanged(indexMapped, indexMapped);
 
-    const int newRowCount = itemsTotal();
+    /*const int newRowCount = itemsTotal();
     Q_ASSERT(oldRowCount == newRowCount);
 
     if (newItem) {
@@ -567,7 +567,7 @@ public:
 
         emit dataChanged(indexMapped, indexMapped);
       });
-    }
+    }*/
 
     return true;
   }

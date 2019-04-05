@@ -108,7 +108,9 @@ void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent,
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
 
-  if (start != 0 || start != end) {
+  sourceReset();
+
+  /*if (start != 0 || start != end) {
       beginResetModel();
       //m_sourceRowCache.clear();
       endResetModel();
@@ -123,7 +125,7 @@ void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent,
   } else {
       beginInsertRows(treeParent, treeIndex.row(), treeIndex.row());
       endInsertRows();
-  }
+  }*/
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +173,9 @@ void PagedItemListProxyFilterModel::slotRowsInserted(const QModelIndex& parent, 
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
 
-  if (start != 0 || start != end) {
+  sourceReset();
+
+  /*if (start != 0 || start != end) {
       beginResetModel();
       //m_sourceRowCache.clear();
       endResetModel();
@@ -186,5 +190,5 @@ void PagedItemListProxyFilterModel::slotRowsInserted(const QModelIndex& parent, 
   } else {
       beginInsertRows(treeParent, treeIndex.row(), treeIndex.row());
       endInsertRows();
-  }
+  }*/
 }
