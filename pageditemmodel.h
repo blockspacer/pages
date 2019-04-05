@@ -236,7 +236,9 @@ class ItemListModel : public QAbstractListModel
 
 public:
   enum class Columns {
-    Item = 0
+    //Item = 0
+    DebugIdentifier = 0
+    , Item
     , Total
   };
 
@@ -248,7 +250,11 @@ public:
   }
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    Q_UNUSED(parent);
+    //Q_UNUSED(parent);
+
+    if( parent.isValid() ) {
+      return 0;
+    }
 
     return m_items.size();
   }
@@ -307,18 +313,58 @@ public:
       return QVariant();
     }
 
-    if (role == Qt::SizeHintRole) {
-      return QVariant(QSize( 25, 25 ));
+    if( index.row() >= m_items.count() )
+    {
+      qCritical( "ComputerListModel::data(): index out of range!" );
     }
 
-    if(role != Qt::DisplayRole && role != Qt::EditRole){
-      return QVariant(); // disable tooltips, icons, e.t.c
+    switch( role )
+    {
+    case Qt::SizeHintRole:
+      return QVariant(QSize( 25, 25 ));
+
+    /*case Qt::DecorationRole:
+      return computerDecorationRole( computerControl );
+
+    case Qt::ToolTipRole:
+      return computerToolTipRole( computerControl );
+
+    case Qt::DisplayRole:
+      return computerDisplayRole( computerControl );
+
+    case Qt::InitialSortOrderRole:
+      return computerControl->computer().room() + computerControl->computer().name() +
+          computerControl->computer().hostAddress() + computerControl->userLoginName();
+
+    case UidRole:
+      return computerControl->computer().networkObjectUid();*/
+
+    case Qt::CheckStateRole:
+      return Qt::Unchecked;
+
+    default:
+      break;
     }
+
+    /*if (role == Qt::SizeHintRole) {
+      return QVariant(QSize( 25, 25 ));
+    }*/
 
     std::shared_ptr<ItemMapper> item = m_items.at(index.row());
-
     if (!item)
       return QVariant();
+
+    ItemModel* model = static_cast<ItemModel*>(item->model());
+    if (!model)
+      return QVariant();
+
+    if (role != Qt::DisplayRole && role != Qt::EditRole) {
+        return QStringLiteral("%1").arg( model->getGUID() ); // disable tooltips, icons, e.t.c
+    }
+
+    if (index.column() == static_cast<int>(Columns::DebugIdentifier)) {
+      return QStringLiteral("%1").arg( model->getGUID() ); // disable tooltips, icons, e.t.c
+    }
 
     QVariant result;
 
@@ -365,8 +411,13 @@ public:
 
   bool removeItemAt(int rowIndex) {
     if(rowIndex < 0 || rowIndex >= itemsTotal()) {
+      qCritical() << "Invalid row index to remove " << rowIndex;
       return false;
     }
+
+    const int beforeCount = itemsTotal();
+
+    //qDebug() << "m_items.size() before" << beforeCount;
 
     emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
 
@@ -376,9 +427,20 @@ public:
       //m_guidToItem.remove(oldGuid);
 
       m_items.removeAt(rowIndex);
+    } else {
+      qCritical() << "Invalid item at row " << rowIndex;
+      Q_ASSERT(false); // force DEBUG crash here
     }
 
     emit endRemoveRows();
+
+    const int afterCount = itemsTotal();
+
+    //qDebug() << "m_items.size() after" << m_items.size();
+
+    Q_ASSERT(m_items.size() != beforeCount);
+    Q_ASSERT(m_items.size() == afterCount);
+    Q_ASSERT(beforeCount == (afterCount + 1));
 
     return true;
   }
@@ -397,8 +459,8 @@ public:
   }
 
   void setRowsTotalSpace(int totalRows) {
-    const int diff = std::abs(totalRows - rowCount());
-    const int rowCountBeforeDelete = rowCount();
+    const int startingRowCount = rowCount();
+    const int diff = std::abs(totalRows - startingRowCount);
     if (rowCount() < totalRows) {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
@@ -407,7 +469,7 @@ public:
     } else {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
-        removeItemAt(rowCountBeforeDelete - 1 - i);
+        removeItemAt(startingRowCount - 1 - i);
       }
     }
   }
@@ -419,7 +481,11 @@ public:
       return false;
     }
 
-    const int oldRows = rowCount();
+    if(!newItem.get()) {
+      return false;
+    }
+
+    const int oldRowCount = itemsTotal();
 
     /*
         First is the new index of the first element that will be inserted.
@@ -428,8 +494,15 @@ public:
         index of the first and last elements is the same, and is equal to
         the current size of the list.
     */
-    const int first = oldRows;
+    const int first = rowIndex;
     const int last = first;
+
+    //emit beginRemoveRows(QModelIndex(), first, last);
+    //m_items.removeAt(rowIndex);
+    //emit endRemoveRows();
+
+    removeItemAt(rowIndex);
+
     emit beginInsertRows(QModelIndex(), first, last);
 
     /*std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
@@ -441,7 +514,12 @@ public:
       }
     }*/
 
-    m_items.replace(rowIndex, newItem);
+    //m_items.replace(rowIndex, newItem);
+    m_items.insert(rowIndex, newItem);
+
+    ItemModel* m1 = static_cast<ItemModel*>(m_items.at(rowIndex)->model());
+    ItemModel* m2 = static_cast<ItemModel*>(newItem->model());
+    Q_ASSERT(m1->getGUID() == m2->getGUID() );
 
     /*{
       ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
@@ -453,8 +531,12 @@ public:
 
     emit endInsertRows();
 
-    const int itemRowId = oldRows + 1;
+    const int itemRowId = rowIndex;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
+    emit dataChanged(indexMapped, indexMapped);
+
+    const int newRowCount = itemsTotal();
+    Q_ASSERT(oldRowCount == newRowCount);
 
     if (newItem) {
       connect(newItem->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
@@ -476,6 +558,7 @@ public:
     return m_items.size();
   }
 
+#ifdef nope
   void setItems(const QList<std::shared_ptr<ItemMapper>>& items) {
     removeAllItems(); // emit row remove signal
 
@@ -493,9 +576,10 @@ public:
 
     emit endInsertRows();
   }
+#endif
 
   const std::shared_ptr<ItemMapper> getItemAt(int rowIndex) const {
-    if(rowIndex < 0 || rowIndex >= m_items.size()) {
+    if(rowIndex < 0 || rowIndex >= itemsTotal()) {
       return nullptr;
     }
 
@@ -514,12 +598,23 @@ public:
   }*/
 
   void removeAllItems() {
-    emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
+    qDebug() << "removeAllItems itemsTotal()" << itemsTotal();
+
+    const int staringItemsTotal = itemsTotal();
+    for( int i = 0; i < staringItemsTotal; i++) {
+      qDebug() << "removeAllItems removeItemAt" << i;
+      removeItemAt(staringItemsTotal - i - 1);
+      Q_ASSERT((staringItemsTotal - i - 1) >= 0);
+    }
+
+    /*emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
 
     m_items.clear();
     //m_guidToItem.clear();
 
     emit endRemoveRows();
+
+    Q_ASSERT(itemsTotal() == 0);*/
   }
 
 private:
@@ -900,6 +995,8 @@ class PagedItemListProxyFilterModel : public QAbstractProxyModel
 public:
   enum class Columns {
     Page = 0
+    //DebugIdentifier = 0
+    //, Page
     , Total
   };
 

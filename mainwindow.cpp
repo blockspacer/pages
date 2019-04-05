@@ -579,6 +579,7 @@ m_ui(new Ui::MainWindow)
 
 #if defined(QT_TESTLIB_LIB) && QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
   if (enableAbstractItemModelTester) {
+    new QAbstractItemModelTester(m_itemListModelCache.get(), QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     //new QAbstractItemModelTester(m_filterItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     //new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     //new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
