@@ -177,6 +177,8 @@ public:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
+    Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
+
     return 1;
   }
 
@@ -207,6 +209,25 @@ public:
     QVariant result = getDataByColumn(index.column());
 
     return result;
+  }
+
+  // Returns the parent of the model index, or QModelIndex() if it has no parent.
+  QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+    Q_UNUSED(child);
+    return QModelIndex(); // flat model, no hierarchy
+  }
+
+  /*!
+      Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+      Use rowCount() on the parent to find out the number of children.
+      Note that it is undefined behavior to report that a particular index hasChildren
+      with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+      \sa parent(), index()
+  */
+  bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
+    return false; // flat model, no hierarchy
   }
 
 private:
@@ -250,11 +271,12 @@ public:
   }
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    //Q_UNUSED(parent);
+    Q_UNUSED(parent);
+    Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
-    if( parent.isValid() ) {
+    /*if( parent.isValid() ) {
       return 0;
-    }
+    }*/
 
     return m_items.size();
   }
@@ -617,6 +639,25 @@ public:
     Q_ASSERT(itemsTotal() == 0);*/
   }
 
+  // Returns the parent of the model index, or QModelIndex() if it has no parent.
+  QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+    Q_UNUSED(child);
+    return QModelIndex(); // flat model, no hierarchy
+  }
+
+  /*!
+      Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+      Use rowCount() on the parent to find out the number of children.
+      Note that it is undefined behavior to report that a particular index hasChildren
+      with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+      \sa parent(), index()
+  */
+  bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
+    return false; // flat model, no hierarchy
+  }
+
 private:
   //QHash<int, std::shared_ptr<ItemMapper>> m_guidToItem;
   QList<std::shared_ptr<ItemMapper>> m_items;
@@ -626,6 +667,10 @@ private:
 Q_DECLARE_METATYPE(ItemListModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<ItemListModel>)
 
+/// \brief It takes multiple source models and morths/concatenates SOME their rows and columns into a single model.
+/// \see QConcatenateTablesProxyModelPrivate
+/// https://git.younemo.com/alex/qtbase/src/5.13/src/corelib/itemmodels/qconcatenatetablesproxymodel.cpp
+/// https://git.younemo.com/alex/qtbase/src/5.13/src/corelib/itemmodels/qconcatenatetablesproxymodel.h
 class ItemTableProxyModel : public QAbstractProxyModel
 {
     Q_OBJECT
@@ -659,18 +704,21 @@ protected:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
+    Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
     ItemListModel* source = getSourceListModel();
     if (!source) {
+      Q_ASSERT(false); // force DEBUG crash here
       return 0;
     }
-
+    qDebug() << "rowCount source->getItems().size()" << source->getItems().size();
     return source->getItems().size();
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
 
+    qDebug() << "columnCount static_cast<int>(ItemTableProxyModel::Columns::Total)" << static_cast<int>(ItemTableProxyModel::Columns::Total);
     return static_cast<int>(ItemTableProxyModel::Columns::Total);
   }
 
@@ -784,7 +832,20 @@ protected:
     QModelIndex mapSourceIndex = mapFromSource(sourceIndex);
     int sr = mapToSource(mapSourceIndex.parent()).row();
     return createIndex(bumpedItems + treeIndexParent.row(), treeIndexParent.column(), sr);*/
-    return QModelIndex();
+    return QModelIndex(); // flat model, no hierarchy
+  }
+
+  /*!
+      Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+      Use rowCount() on the parent to find out the number of children.
+      Note that it is undefined behavior to report that a particular index hasChildren
+      with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+      \sa parent(), index()
+  */
+  bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
+    return false; // flat model, no hierarchy
   }
 
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
@@ -886,6 +947,7 @@ public:
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
       Q_UNUSED(parent);
+      Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
       auto filteredRows = QSortFilterProxyModel::rowCount();
       //qDebug() << "filteredRows1" << filteredRows;
@@ -953,6 +1015,27 @@ protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
         return left.row() < right.row(); // sort from first added to last added
     }
+
+
+
+  // Returns the parent of the model index, or QModelIndex() if it has no parent.
+  QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+    Q_UNUSED(child);
+    return QModelIndex(); // flat model, no hierarchy
+  }
+
+  /*!
+      Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+      Use rowCount() on the parent to find out the number of children.
+      Note that it is undefined behavior to report that a particular index hasChildren
+      with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+      \sa parent(), index()
+  */
+  bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
+    return false; // flat model, no hierarchy
+  }
 
 private:
     bool rowInRange(const int rowNum) const {
@@ -1050,6 +1133,8 @@ public:
   void setDataSource(ItemListModel* datasource) {
     Q_ASSERT(datasource);
     m_dataSource = datasource;
+
+    slotSourceModelChanged();
   }
 
 public slots:
@@ -1063,6 +1148,7 @@ protected:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
+    Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
     return getPagesTotal();
 
@@ -1208,7 +1294,20 @@ protected:
   QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
     Q_UNUSED(child);
 
-    return QModelIndex();
+    return QModelIndex(); // flat model, no hierarchy
+  }
+
+  /*!
+      Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+      Use rowCount() on the parent to find out the number of children.
+      Note that it is undefined behavior to report that a particular index hasChildren
+      with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+      \sa parent(), index()
+  */
+  bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+    Q_UNUSED(parent);
+
+    return false; // flat model, no hierarchy
   }
 
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {

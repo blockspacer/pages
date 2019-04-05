@@ -583,7 +583,7 @@ m_ui(new Ui::MainWindow)
     //new QAbstractItemModelTester(m_filterItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     //new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     //new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    //new QAbstractItemModelTester(m_itemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_itemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
   }
 #endif
 

@@ -43,7 +43,9 @@ void ItemTableProxyModel::slotRowsInserted(const QModelIndex& parent, int start,
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
 
-  if (start != 0 || start != end) {
+  sourceReset();
+
+  /*if (start != 0 || start != end) {
       beginResetModel();
       //m_sourceRowCache.clear();
       endResetModel();
@@ -58,7 +60,7 @@ void ItemTableProxyModel::slotRowsInserted(const QModelIndex& parent, int start,
   } else {
       beginInsertRows(treeParent, treeIndex.row(), treeIndex.row());
       endInsertRows();
-  }
+  }*/
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
