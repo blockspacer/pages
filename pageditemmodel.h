@@ -929,6 +929,7 @@ public:
 
     void setFilterMinSourceRowIndex(const int rowNum){
         minSourceRowIndex = rowNum;
+        sourceReset();
         invalidateFilter();
     }
 
@@ -936,6 +937,7 @@ public:
 
     void setFilterMaxSourceRowIndex(const int rowNum){
         maxSourceRowIndex = rowNum;
+        sourceReset();
         invalidateFilter();
     }
 
@@ -1126,13 +1128,13 @@ public:
     return m_onlinePagesTotal;
   }
 
-  ItemListModel* getDataSource() const {
-    return m_dataSource;
+  ItemListModel* getExtraDataSource() const {
+    return m_extraDataSource;
   }
 
-  void setDataSource(ItemListModel* datasource) {
+  void setExtraDataSource(ItemListModel* datasource) {
     Q_ASSERT(datasource);
-    m_dataSource = datasource;
+    m_extraDataSource = datasource;
 
     slotSourceModelChanged();
   }
@@ -1150,14 +1152,31 @@ protected:
     Q_UNUSED(parent);
     Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
-    return getPagesTotal();
+    /// \note always set total pages
+    if (getPagesTotal() >= 0) { // if value is set and valid
+      return getPagesTotal();
+    }
+
+    //return QAbstractProxyModel::rowCount(parent);
+
+    /// \note always set extra data source
+    ItemListModel* itemListModel = getExtraDataSource();
+    if (!itemListModel) {
+      Q_ASSERT(false); // force DEBUG crash here
+      return 1;
+    }
+
+    /// \note possible unreachable code
+    //Q_ASSERT(false); // force DEBUG crash here
+
+    //return itemListModel->rowCount();
 
     /// \note need to show something to user, so we will add empty page if no pages recieved
     //return std::max(getPagesTotal(), 1);
 
     /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
       return getOnlinePagesTotal();
-    }
+    }*/
 
     int pagesTotal = 0;
     if (getPageSize() != 0) {
@@ -1166,7 +1185,8 @@ protected:
       pagesTotal = res.rem ? (res.quot + 1) : res.quot;
     }
 
-    return pagesTotal;*/
+    /// \note possible unreachable code
+    return pagesTotal;
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
@@ -1210,7 +1230,7 @@ protected:
     //ItemTableProxyModel* itemTableProxyModel1 = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
     //ItemTableProxyModel* itemTableProxyModel2 = static_cast<ItemTableProxyModel*>(itemTableProxyModel1->sourceModel());
 
-    ItemListModel* itemListModel = getDataSource();
+    ItemListModel* itemListModel = getExtraDataSource();
     if (!itemListModel) {
       return result;
     }
@@ -1369,7 +1389,7 @@ private:
   //WorkMode m_workMode = WorkMode::Total;
   int m_onlinePagesTotal = -1;
 
-  ItemListModel* m_dataSource;
+  ItemListModel* m_extraDataSource;
 };
 
 Q_DECLARE_METATYPE(PagedItemListProxyFilterModel*)

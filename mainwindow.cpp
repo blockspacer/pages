@@ -530,7 +530,7 @@ m_ui(new Ui::MainWindow)
   //m_pagedItemTableProxyModel->submit();
 
   m_pagedItemListProxyFilterModel->setSourceModel(m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
-  m_pagedItemListProxyFilterModel->setDataSource(m_itemListModelCache.get());
+  m_pagedItemListProxyFilterModel->setExtraDataSource(m_itemListModelCache.get());
 
   m_ui->tableView->setModel(m_pagedItemTableProxyModel);
   m_ui->tableView->setColumnWidth(0, 150); // name
@@ -581,7 +581,7 @@ m_ui(new Ui::MainWindow)
   if (enableAbstractItemModelTester) {
     new QAbstractItemModelTester(m_itemListModelCache.get(), QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     new QAbstractItemModelTester(m_filterItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    //new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     //new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     new QAbstractItemModelTester(m_itemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
   }

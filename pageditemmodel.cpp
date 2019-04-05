@@ -21,7 +21,8 @@ void ItemTableProxyModel::sourceReset()
 
 void ItemTableProxyModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
-  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  // TODO
+  //emit dataChanged(mapFromSource(first), mapFromSource(last));
 }
 
 void ItemTableProxyModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)
@@ -86,7 +87,8 @@ void PagedItemTableProxyFilterModel::sourceReset()
 
 void PagedItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
-  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  // TODO
+  //emit dataChanged(mapFromSource(first), mapFromSource(last));
 }
 
 void PagedItemTableProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)
@@ -151,7 +153,8 @@ void PagedItemListProxyFilterModel::sourceReset()
 
 void PagedItemListProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
-  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  // TODO
+  //emit dataChanged(mapFromSource(first), mapFromSource(last));
 }
 
 void PagedItemListProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)
