@@ -23,6 +23,7 @@ void ItemTableProxyModel::slotDataChanged(const QModelIndex& first, const QModel
 {
   // TODO
   //emit dataChanged(mapFromSource(first), mapFromSource(last));
+  sourceReset();
 }
 
 void ItemTableProxyModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)
@@ -87,12 +88,15 @@ void PagedItemTableProxyFilterModel::sourceReset()
 
 void PagedItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
+  qDebug() << "slotDataChanged";
   // TODO
-  //emit dataChanged(mapFromSource(first), mapFromSource(last));
+  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  sourceReset();
 }
 
 void PagedItemTableProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)
 {
+  qDebug() << "slotRowsRemoved";
   /// \see HistoryTreeModel qt example
   /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
   Q_UNUSED(parent); // Avoid warnings when compiling release
@@ -105,6 +109,78 @@ void PagedItemTableProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, 
 
 void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent, int start, int end)
 {
+  qDebug() << "slotRowsInserted";
+  /// \see HistoryTreeModel qt example
+  /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
+  Q_UNUSED(parent); // Avoid warnings when compiling release
+  Q_ASSERT(!parent.isValid());
+
+  sourceReset();
+
+  /*if (start != 0 || start != end) {
+      beginResetModel();
+      //m_sourceRowCache.clear();
+      endResetModel();
+      return;
+  }
+
+  QModelIndex treeIndex = mapFromSource(sourceModel()->index(start, 0));
+  QModelIndex treeParent = treeIndex.parent();
+  if (rowCount(treeParent) == 1) {
+      beginInsertRows(QModelIndex(), 0, 0);
+      endInsertRows();
+  } else {
+      beginInsertRows(treeParent, treeIndex.row(), treeIndex.row());
+      endInsertRows();
+  }*/
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void ItemTableProxyFilterModel::slotSourceModelChanged()
+{
+  disconnect(this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
+  disconnect(this, SLOT(slotRowsInserted(QModelIndex,int,int)));
+  disconnect(this, SLOT(slotRowsRemoved(QModelIndex,int,int)));
+  disconnect(this, SLOT(sourceReset()));
+
+  connect(sourceModel(), SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(slotDataChanged(QModelIndex,QModelIndex)));
+  connect(sourceModel(), SIGNAL(rowsInserted(QModelIndex,int,int)), this, SLOT(slotRowsInserted(QModelIndex,int,int)));
+  connect(sourceModel(), SIGNAL(rowsRemoved(QModelIndex,int,int)), this, SLOT(slotRowsRemoved(QModelIndex,int,int)));
+  connect(sourceModel(), SIGNAL(modelReset()), this, SLOT(sourceReset()));
+}
+
+void ItemTableProxyFilterModel::sourceReset()
+{
+  beginResetModel();
+  endResetModel();
+}
+
+void ItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
+{
+  qDebug() << "slotDataChanged";
+  // TODO
+  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  sourceReset();
+}
+
+void ItemTableProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)
+{
+  qDebug() << "slotRowsRemoved";
+  /// \see HistoryTreeModel qt example
+  /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
+  Q_UNUSED(parent); // Avoid warnings when compiling release
+  Q_ASSERT(!parent.isValid());
+  Q_UNUSED(start);
+  Q_UNUSED(end);
+
+  sourceReset();
+}
+
+void ItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent, int start, int end)
+{
+  qDebug() << "slotRowsInserted";
   /// \see HistoryTreeModel qt example
   /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
   Q_UNUSED(parent); // Avoid warnings when compiling release
@@ -155,6 +231,7 @@ void PagedItemListProxyFilterModel::slotDataChanged(const QModelIndex& first, co
 {
   // TODO
   //emit dataChanged(mapFromSource(first), mapFromSource(last));
+  sourceReset();
 }
 
 void PagedItemListProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, int start, int end)

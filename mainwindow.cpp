@@ -36,6 +36,7 @@ static QVector<Item> dummyRemoteItems {
   Item{9, "9Lisa", "Ali"},
   Item{10, "10Siren", "Ann"},
   Item{11, "11Kennie", "Demer"},
+  Item{12, "12Clementine", "Dallas"},
 };
 
 static ItemModel* createItemModel(int guid, const QString& name, const QString& surname, QObject* parent = nullptr) {
@@ -181,7 +182,9 @@ static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(bool forceClearC
   const int remoteRowsTotal = pageStartCursor + result->recievedItemsCount;
   qDebug() << "remoteRowsTotal" << remoteRowsTotal;
 
-  model->setRowsTotalSpace(remoteRowsTotal);
+  //model->setRowsTotalSpace(remoteRowsTotal);
+
+  model->setRowsMinSpace(remoteRowsTotal);
 
   int itemPageCursor = pageStartCursor;
 
@@ -212,17 +215,13 @@ m_ui(new Ui::MainWindow)
 
   m_pagedItemMapper = std::make_shared<PagedItemMapper>();
 
-  m_filterItemTableProxyModel = new PagedItemTableProxyFilterModel();
+  m_filterItemTableProxyModel = new ItemTableProxyFilterModel();
 
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
   m_filterItemTableProxyModel->setDynamicSortFilter(true);
 
-  //m_filterItemTableProxyModel->setRowLimit(kItemsPerPage);
-
   m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
-
-  m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
 
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
@@ -242,12 +241,12 @@ m_ui(new Ui::MainWindow)
   m_ui->nextButton->setEnabled(false);
   m_ui->pageSizeSpinBox->setValue(kItemsPerPage);
   m_ui->pageNumSpinBox->setValue(0);
-  m_ui->clearCacheOnPagingCheckBox->setChecked(true);
+  m_ui->clearCacheOnPagingCheckBox->setChecked(false);
 
   //m_ui->refreshButton->setEnabled(false);
   m_ui->refreshButton->setEnabled(true);
 
-  /*{
+  {
     ItemModel* itemModel = createItemModel(0, "_0Alie", "Bork");
     std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
     itemModel->setParent(m_itemMapper.get());
@@ -290,7 +289,91 @@ m_ui(new Ui::MainWindow)
     //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
     //m_ui->scrollVerticalLayout->addWidget(itemWidget);
     m_itemListModelCache->pushBack(m_itemMapper);
-  }*/
+  }
+
+  // must be same as dummy NotLoaded model
+  {
+    ItemModel* itemModel = createItemModel(std::numeric_limits<int>::min(), "", "");
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  // must be same as dummy NotLoaded model
+  {
+    ItemModel* itemModel = createItemModel(std::numeric_limits<int>::min(), "", "");
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  // must be same as dummy NotLoaded model
+  {
+    ItemModel* itemModel = createItemModel(std::numeric_limits<int>::min(), "", "");
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  // must be same as dummy NotLoaded model
+  {
+    ItemModel* itemModel = createItemModel(std::numeric_limits<int>::min(), "", "");
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  // must be same as dummy NotLoaded model
+  {
+    ItemModel* itemModel = createItemModel(std::numeric_limits<int>::min(), "", "");
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  // must be same as dummy NotLoaded model
+  {
+    ItemModel* itemModel = createItemModel(std::numeric_limits<int>::min(), "", "");
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  {
+    ItemModel* itemModel = createItemModel(11, "_11John", "Black");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
+
+  {
+    ItemModel* itemModel = createItemModel(12, "_12Sara", "Parker");
+    std::shared_ptr<ItemMapper> m_itemMapper = createItemMapper(itemModel);
+    itemModel->setParent(m_itemMapper.get());
+    //ItemWidget* itemWidget = createItemWidget(m_itemMapper);
+    //m_ui->scrollVerticalLayout->addWidget(itemWidget);
+    m_itemListModelCache->pushBack(m_itemMapper);
+  }
 
   m_pagedItemMapper->setModel(m_pagedItemListProxyFilterModel);
   m_pagedItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
@@ -374,6 +457,19 @@ m_ui(new Ui::MainWindow)
 
     isDisconnected = state > 0 ? true : false;
     qDebug() << "isDisconnected = " << isDisconnected;
+    //m_ui->refreshButton->setEnabled(!isDisconnected);
+  });
+
+  connect(m_ui->skipNotLoadedCheckBox, &QCheckBox::stateChanged, [this](int state) {
+    Q_UNUSED(this);
+
+    m_filterItemTableProxyModel->setSkipNotLoaded(state > 0);
+
+    // // Invalidates the current sorting and filtering.
+    m_filterItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
+
+    qDebug() << "skipNotLoadedCheckBox = " << state;
     //m_ui->refreshButton->setEnabled(!isDisconnected);
   });
 
@@ -521,8 +617,6 @@ m_ui(new Ui::MainWindow)
 
   m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
   m_pagedItemTableProxyModel->setDynamicSortFilter(true);
-  m_pagedItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
-  m_pagedItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
   m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
   // Invalidates the current sorting and filtering.
@@ -569,10 +663,13 @@ m_ui(new Ui::MainWindow)
         filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
         filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
-        m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, 0, kItemsPerPage, filterSettings);
+        const int requestPageNum = 3;
+
+        m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, requestPageNum, kItemsPerPage, filterSettings);
         onDataFetched(m_lastFetchedData->requestedPageNum, m_lastFetchedData);
         onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
-        m_pagedItemMapper->toFirst();
+        //m_pagedItemMapper->toFirst();
+        m_pagedItemMapper->setCurrentIndex(requestPageNum);
         //m_pagedItemMapper->submit();
     });
   }
@@ -582,7 +679,7 @@ m_ui(new Ui::MainWindow)
     new QAbstractItemModelTester(m_itemListModelCache.get(), QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     new QAbstractItemModelTester(m_filterItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    //new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
     new QAbstractItemModelTester(m_itemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
   }
 #endif
@@ -606,7 +703,6 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
     //m_pagedItemListProxyFilterModel->setWorkMode(PagedItemListProxyFilterModel::WorkMode::Online);
     m_pagedItemListProxyFilterModel->setPagesTotal(pagesTotal);
     m_pagedItemListProxyFilterModel->setPageSize(data->requestedPageSize);
-    m_pagedItemTableProxyModel->setRowLimit(data->requestedPageSize); // limit shown items on page
 
     if (data->totalPages <= 0) {
       m_ui->prevButton->setEnabled(false);
@@ -617,7 +713,6 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
     //m_pagedItemListProxyFilterModel->setOnlinePagesTotal(-1);
 
     m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
-    m_pagedItemTableProxyModel->setRowLimit(kItemsPerPage); // limit shown items on page
 
     // Invalidates the current sorting and filtering.
     m_filterItemTableProxyModel->invalidate();
@@ -635,7 +730,7 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
     m_pagedItemListProxyFilterModel->setPagesTotal(pagesTotal);
   }
 
-  qDebug() << "pageNum" << pageNum << "pagesTotal" << pagesTotal;
+  //qDebug() << "pageNum" << pageNum << "pagesTotal" << pagesTotal;
 
   if (pagesTotal <= 0) {
     m_ui->prevButton->setEnabled(false);

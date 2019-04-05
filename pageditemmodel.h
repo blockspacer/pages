@@ -70,7 +70,7 @@ public:
 
   enum class ItemMode {
     Visible = 0
-    , Hidden
+    , NotLoaded
     , Total
   };
 
@@ -258,13 +258,17 @@ class ItemListModel : public QAbstractListModel
 public:
   enum class Columns {
     //Item = 0
+     /// \note zero column must be convertable to string
+     /// \see `Tests model's implementation of QAbstractItemModel::data()`
+     ///      in QAbstractItemModelTesterPrivate::data()
+     ///      in qtbase/src/testlib/qabstractitemmodeltester.cpp
     DebugIdentifier = 0
     , Item
     , Total
   };
 
   explicit ItemListModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
-    setDummyItemMapper();
+    setDummyNotLoaded();
   }
 
   virtual ~ItemListModel() {
@@ -418,7 +422,7 @@ public:
 
     emit endInsertRows();
 
-    /*const int itemRowId = oldRows + 1;
+    const int itemRowId = oldRows + 1;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
 
     if (item) {
@@ -426,9 +430,11 @@ public:
         Q_UNUSED(first);
         Q_UNUSED(last);
 
-        emit dataChanged(indexMapped, indexMapped);
+        //sourceReset();
+
+        //emit dataChanged(indexMapped, indexMapped); // TODO
       });
-    }*/
+    }
   }
 
   bool removeItemAt(int rowIndex) {
@@ -467,17 +473,17 @@ public:
     return true;
   }
 
-  void setDummyItemMapper() {
-    m_dummyItemMapper = std::make_shared<ItemMapper>();
+  void setDummyNotLoaded() {
+    m_dummyNotLoaded = std::make_shared<ItemMapper>();
 
     ItemModel* itemModel = new ItemModel();
-    itemModel->setParent(m_dummyItemMapper.get());
-    itemModel->setItemMode(ItemModel::ItemMode::Hidden);
+    itemModel->setParent(m_dummyNotLoaded.get());
+    itemModel->setItemMode(ItemModel::ItemMode::NotLoaded);
 
     /// \note allows two-way data editing
-    m_dummyItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
-    m_dummyItemMapper->setModel(itemModel);
-    m_dummyItemMapper->toFirst();
+    m_dummyNotLoaded->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
+    m_dummyNotLoaded->setModel(itemModel);
+    m_dummyNotLoaded->toFirst();
   }
 
   void setRowsTotalSpace(int totalRows) {
@@ -486,12 +492,23 @@ public:
     if (rowCount() < totalRows) {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
-        pushBack(m_dummyItemMapper);
+        pushBack(m_dummyNotLoaded);
       }
     } else {
       for (int i = 0; i < diff; i++) {
         /// \note need to emit beginInsertRows/endInsertRows/e.t.c
         removeItemAt(startingRowCount - 1 - i);
+      }
+    }
+  }
+
+  void setRowsMinSpace(int totalRows) {
+    const int startingRowCount = rowCount();
+    const int diff = std::abs(totalRows - startingRowCount);
+    if (rowCount() < totalRows) {
+      for (int i = 0; i < diff; i++) {
+        /// \note need to emit beginInsertRows/endInsertRows/e.t.c
+        pushBack(m_dummyNotLoaded);
       }
     }
   }
@@ -557,7 +574,7 @@ public:
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
     emit dataChanged(indexMapped, indexMapped);
 
-    /*const int newRowCount = itemsTotal();
+    const int newRowCount = itemsTotal();
     Q_ASSERT(oldRowCount == newRowCount);
 
     if (newItem) {
@@ -565,9 +582,11 @@ public:
         Q_UNUSED(first);
         Q_UNUSED(last);
 
-        emit dataChanged(indexMapped, indexMapped);
+        //sourceReset();
+
+        //emit dataChanged(indexMapped, indexMapped); // TODO
       });
-    }*/
+    }
 
     return true;
   }
@@ -661,7 +680,7 @@ public:
 private:
   //QHash<int, std::shared_ptr<ItemMapper>> m_guidToItem;
   QList<std::shared_ptr<ItemMapper>> m_items;
-  std::shared_ptr<ItemMapper> m_dummyItemMapper;
+  std::shared_ptr<ItemMapper> m_dummyNotLoaded;
 };
 
 Q_DECLARE_METATYPE(ItemListModel*)
@@ -711,14 +730,14 @@ protected:
       Q_ASSERT(false); // force DEBUG crash here
       return 0;
     }
-    qDebug() << "rowCount source->getItems().size()" << source->getItems().size();
+    //qDebug() << "rowCount source->getItems().size()" << source->getItems().size();
     return source->getItems().size();
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
 
-    qDebug() << "columnCount static_cast<int>(ItemTableProxyModel::Columns::Total)" << static_cast<int>(ItemTableProxyModel::Columns::Total);
+    //qDebug() << "columnCount static_cast<int>(ItemTableProxyModel::Columns::Total)" << static_cast<int>(ItemTableProxyModel::Columns::Total);
     return static_cast<int>(ItemTableProxyModel::Columns::Total);
   }
 
@@ -941,12 +960,6 @@ public:
         invalidateFilter();
     }
 
-    int getRowLimit() const { return rowLimit; }
-
-    void setRowLimit(const int num){
-        rowLimit = num;
-    }
-
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
       Q_UNUSED(parent);
       Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
@@ -954,8 +967,6 @@ public:
       auto filteredRows = QSortFilterProxyModel::rowCount();
       //qDebug() << "filteredRows1" << filteredRows;
 
-      if (getRowLimit() >= 0)
-        return std::min(filteredRows, getRowLimit());
       //qDebug() << "filteredRows2" << filteredRows;
 
       return filteredRows;
@@ -967,77 +978,47 @@ public:
     }
 
 protected:
-
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const Q_DECL_OVERRIDE {
-        /*if (!sourceParent.isValid()) {
+        if (sourceRow < 0 || sourceRow >= sourceModel()->rowCount()) {
           return false;
-        }*/
-        /*if (sourceRow < 0 || sourceRow >= rowCount()) {
-          return false;
-        }*/
-
-        const QRegExp& regexp = filterRegExp();
-
-        const bool isInRange = rowInRange(sourceRow);
+        }
 
         const QModelIndex& indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
         const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
         //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
-        const bool isHidden = itemMode == ItemModel::ItemMode::Hidden;
+        const bool isNotLoaded = itemMode == ItemModel::ItemMode::NotLoaded;
 
-        const QString& filterPattern = regexp.pattern();
+        const bool isInRange = rowInRange(sourceRow);
 
-        if(!isHidden && isInRange && filterPattern.isEmpty()) {
+        if(!isNotLoaded && isInRange) {
           return true;
         }
 
-        const QModelIndex &indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
-        const QString& name = sourceModel()->data(indexName).toString();
-        //const bool isNameFiltered = name.contains(filterPattern, filterCaseSensitivity());
-
-        // indexIn attempts to find a match in str from position offset (0 by default).
-        // Returns the position of the first match, or -1 if there was no match.
-        const bool isNameFiltered = regexp.indexIn(name) != -1;
-
-        /*const QModelIndex& indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
-        const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(regexp);
-
-        const QModelIndex& indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
-        const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(regexp);
-*/
-        //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
-
-        const bool anyFieldMatch = (isNameFiltered
-                //|| isSurnameFiltered
-                );
-
-        return !isHidden && isInRange && anyFieldMatch;
+        return false;
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
         return left.row() < right.row(); // sort from first added to last added
     }
 
+    // Returns the parent of the model index, or QModelIndex() if it has no parent.
+    QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+      Q_UNUSED(child);
+      return QModelIndex(); // flat model, no hierarchy
+    }
 
+    /*!
+        Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+        Use rowCount() on the parent to find out the number of children.
+        Note that it is undefined behavior to report that a particular index hasChildren
+        with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+        \sa parent(), index()
+    */
+    bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+      Q_UNUSED(parent);
 
-  // Returns the parent of the model index, or QModelIndex() if it has no parent.
-  QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
-    Q_UNUSED(child);
-    return QModelIndex(); // flat model, no hierarchy
-  }
-
-  /*!
-      Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
-      Use rowCount() on the parent to find out the number of children.
-      Note that it is undefined behavior to report that a particular index hasChildren
-      with this method if the same index has the flag Qt::ItemNeverHasChildren set.
-      \sa parent(), index()
-  */
-  bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
-    Q_UNUSED(parent);
-
-    return false; // flat model, no hierarchy
-  }
+      return false; // flat model, no hierarchy
+    }
 
 private:
     bool rowInRange(const int rowNum) const {
@@ -1051,11 +1032,147 @@ private:
 
     int minSourceRowIndex = -1;
     int maxSourceRowIndex = -1;
-    int rowLimit = -1;
 };
 
 Q_DECLARE_METATYPE(PagedItemTableProxyFilterModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<PagedItemTableProxyFilterModel>)
+
+
+/// \see doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
+/// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
+class ItemTableProxyFilterModel : public QSortFilterProxyModel
+{
+    Q_OBJECT
+
+public slots:
+  void slotSourceModelChanged(void);
+  void slotDataChanged(const QModelIndex& first, const QModelIndex& last);
+  void slotRowsInserted(const QModelIndex& parent, int first, int last);
+  void slotRowsRemoved(const QModelIndex &parent, int start, int end);
+  void sourceReset();
+
+public:
+    explicit ItemTableProxyFilterModel(QObject *parent = nullptr): QSortFilterProxyModel(parent)
+    {
+      connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
+    }
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+      Q_UNUSED(parent);
+      Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
+
+      return  QSortFilterProxyModel::rowCount();
+    }
+
+    int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
+      Q_UNUSED(parent);
+      return static_cast<int>(ItemTableProxyModel::Columns::Total);
+    }
+
+    void setSkipNotLoaded(bool skip) {
+      m_skipNotLoaded = skip;
+      sourceReset();
+      invalidateFilter();
+    }
+
+    bool isSkippingNotLoaded() const {
+      return m_skipNotLoaded;
+    }
+
+protected:
+
+    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const Q_DECL_OVERRIDE {
+    qDebug() << "filterAcceptsRow";
+        /*if (!sourceParent.isValid()) {
+          return false;
+        }*/
+
+        /*if (sourceRow < 0 || sourceRow >= sourceModel()->rowCount()) {
+          return false;
+        }*/
+
+        const QRegExp& regexp = filterRegExp();
+
+        const QModelIndex& indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
+        const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
+        //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
+        const bool isNotLoaded = itemMode == ItemModel::ItemMode::NotLoaded;
+
+        const QString& filterPattern = regexp.pattern();
+
+        /*if(!isNotLoaded && filterPattern.isEmpty()) {
+          return true;
+        }*/
+
+        bool anyFieldMatch = true;
+        if(!filterPattern.isEmpty()) {
+          const QModelIndex &indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
+          const QString& name = sourceModel()->data(indexName).toString();
+          //const bool isNameFiltered = name.contains(filterPattern, filterCaseSensitivity());
+
+          // indexIn attempts to find a match in str from position offset (0 by default).
+          // Returns the position of the first match, or -1 if there was no match.
+          const bool isNameFiltered = regexp.indexIn(name) != -1;
+          anyFieldMatch = (isNameFiltered
+                //|| isSurnameFiltered
+                );
+        }
+
+        /*const QModelIndex& indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
+        const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(regexp);
+
+        const QModelIndex& indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
+        const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(regexp);
+*/
+        //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
+
+        //return !isNotLoaded && anyFieldMatch;
+
+        bool needSkip = isNotLoaded || anyFieldMatch;
+
+        if (isSkippingNotLoaded()) {
+          needSkip = !isNotLoaded && anyFieldMatch;
+        }
+
+        // DEBUG ONLY TODO REMOVE
+         {
+          const QModelIndex &indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
+          const QString& name = sourceModel()->data(indexName).toString();
+          qDebug() << "needSkip for " << name << needSkip;
+        }
+
+        return needSkip;
+    }
+
+    bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
+        return left.row() < right.row(); // sort from first added to last added
+    }
+
+    // Returns the parent of the model index, or QModelIndex() if it has no parent.
+    QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+      Q_UNUSED(child);
+      return QModelIndex(); // flat model, no hierarchy
+    }
+
+    /*!
+        Returns \c{true} if \a parent has any children; otherwise returns \c{false}.
+        Use rowCount() on the parent to find out the number of children.
+        Note that it is undefined behavior to report that a particular index hasChildren
+        with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+        \sa parent(), index()
+    */
+    bool hasChildren(const QModelIndex &parent) const Q_DECL_OVERRIDE {
+      Q_UNUSED(parent);
+
+      return false; // flat model, no hierarchy
+    }
+
+private:
+  bool m_skipNotLoaded = false;
+};
+
+Q_DECLARE_METATYPE(ItemTableProxyFilterModel*)
+Q_DECLARE_METATYPE(std::shared_ptr<ItemTableProxyFilterModel>)
 
 class PagedItemMapper : public QDataWidgetMapper
 {

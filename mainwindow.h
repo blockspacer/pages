@@ -40,7 +40,7 @@ public slots:
   void onMapperIndexChanged(int row);
 
 private:
-  PagedItemTableProxyFilterModel* m_filterItemTableProxyModel;
+  ItemTableProxyFilterModel* m_filterItemTableProxyModel;
   PagedItemTableProxyFilterModel* m_pagedItemTableProxyModel;
   PagedItemListProxyFilterModel* m_pagedItemListProxyFilterModel;
   QTimer* m_timer;

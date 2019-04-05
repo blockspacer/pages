@@ -34,6 +34,16 @@
           </widget>
          </item>
          <item>
+          <widget class="QListView" name="listView">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QListView" name="listView_2">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
@@ -45,16 +55,6 @@
          </item>
          <item>
           <widget class="QListView" name="listView_3">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QListView" name="listView">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
              <horstretch>0</horstretch>
@@ -128,6 +128,13 @@
                    <widget class="QCheckBox" name="clearCacheOnPagingCheckBox">
                     <property name="text">
                      <string>Force clear cache on paging</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="skipNotLoadedCheckBox">
+                    <property name="text">
+                     <string>skip not loaded</string>
                     </property>
                    </widget>
                   </item>
