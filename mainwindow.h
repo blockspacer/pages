@@ -4,6 +4,7 @@
 #include <QMainWindow>
 
 #include "pageditemmodel.h"
+#include "paged_item_widget.h"
 
 #include <memory>
 
@@ -29,7 +30,7 @@ public:
   ~MainWindow();
 
 
-  void onDataFetched(std::shared_ptr<fetchedPageData> data);
+  void onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPageData> data);
   void onRowRangeChanged(int first, int last);
 public slots:
   //void onCheckboxChanged(const int state);
@@ -47,6 +48,7 @@ private:
   Ui::MainWindow *m_ui;
   std::shared_ptr<PagedItemMapper> m_pagedItemMapper;
   std::shared_ptr<ItemListModel> m_itemListModelCache;
+  PagedItemWidget* m_pagedItemWidget;
   //ItemPageListModel* m_pagedItemModel;
 };
 

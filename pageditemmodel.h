@@ -187,15 +187,17 @@ public:
   {
     //qDebug() << "setData PersonsModel " << value << value.toString();
 
-    if (!index.isValid())
+    if (!index.isValid()) {
       return false;
+    }
 
     return setDataByColumn(index.column(), value);
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (!index.isValid())
+    if (!index.isValid()) {
       return false;
+    }
 
     QVariant result = getDataByColumn(index.column());
 
@@ -266,6 +268,28 @@ public:
     }
 
     return true;
+  }
+
+
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
+    if (role != Qt::DisplayRole) {
+      return QVariant();
+    }
+
+    if (orientation == Qt::Horizontal) {
+      return QString("Column: %1").arg(section);
+    } else {
+      return QString("Row: %1").arg(section);
+    }
+  }
+
+  Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
+  {
+    if (!index.isValid()) {
+      return Qt::ItemIsEnabled;
+    }
+
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -627,21 +651,33 @@ protected:
     return res;
   }
 
+  // Returns the parent of the model index, or QModelIndex() if it has no parent.
   QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
+    /*int offset = child.internalId();
+    if (offset == 0 || !child.isValid())
+        return QModelIndex();
+    return createIndex(offset - 1, 0);*/
+    /*QModelIndex sourceIndex = sourceModel()->index(child.internalId(), 0);
+    QModelIndex mapSourceIndex = mapFromSource(sourceIndex);
+    int sr = mapToSource(mapSourceIndex.parent()).row();
+    return createIndex(bumpedItems + treeIndexParent.row(), treeIndexParent.column(), sr);*/
     return QModelIndex();
   }
 
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
     QModelIndex res;
-    if(proxyIndex.isValid())
+    if(!proxyIndex.isValid())
     {
-      if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
-      {
-         res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
-      } else {
-         res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
-      }
+      return res;
     }
+
+    if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
+    {
+       res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
+    } else {
+       res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
+    }
+
     return res;
   }
 
@@ -653,8 +689,9 @@ protected:
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    if (!index.isValid())
+    if (!index.isValid()) {
       return Qt::ItemIsEnabled;
+    }
 
    Qt::ItemFlags res;
    if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
@@ -668,20 +705,23 @@ protected:
   }
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole)
-        return QVariant();
+    if (role != Qt::DisplayRole) {
+      return QVariant();
+    }
 
-    if (orientation == Qt::Horizontal)
-        return QString("Column: %1").arg(section);
-    else
-        return QString("Row: %1").arg(section);
+    if (orientation == Qt::Horizontal) {
+      return QString("Column: %1").arg(section);
+    } else {
+      return QString("Row: %1").arg(section);
+    }
   }
 };
 
 Q_DECLARE_METATYPE(ItemTableProxyModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<ItemTableProxyModel>)
 
-/// \see https://doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
+/// \see doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
+/// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
 class PagedItemTableProxyFilterModel : public QSortFilterProxyModel
 {
     Q_OBJECT
@@ -737,30 +777,49 @@ public:
 protected:
 
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const Q_DECL_OVERRIDE {
-        const QModelIndex indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
-        const QString name = sourceModel()->data(indexName).toString();
-        const bool isNameFiltered = name.contains(filterRegExp());
+        /*if (!sourceParent.isValid()) {
+          return false;
+        }*/
+        /*if (sourceRow < 0 || sourceRow >= rowCount()) {
+          return false;
+        }*/
 
-        const QModelIndex indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
-        const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(filterRegExp());
+        const QRegExp& regexp = filterRegExp();
 
-        const QModelIndex indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
-        const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(filterRegExp());
+        const bool isInRange = rowInRange(sourceRow);
 
-        const QModelIndex indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
-        const ItemModel::ItemMode itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
-        qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
+        const QModelIndex& indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
+        const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
+        //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
         const bool isHidden = itemMode == ItemModel::ItemMode::Hidden;
 
+        const QString& filterPattern = regexp.pattern();
+
+        if(!isHidden && isInRange && filterPattern.isEmpty()) {
+          return true;
+        }
+
+        const QModelIndex &indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
+        const QString& name = sourceModel()->data(indexName).toString();
+        //const bool isNameFiltered = name.contains(filterPattern, filterCaseSensitivity());
+
+        // indexIn attempts to find a match in str from position offset (0 by default).
+        // Returns the position of the first match, or -1 if there was no match.
+        const bool isNameFiltered = regexp.indexIn(name) != -1;
+
+        /*const QModelIndex& indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
+        const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(regexp);
+
+        const QModelIndex& indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
+        const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(regexp);
+*/
         //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
 
-        const bool anyFieldMatch = (isNameFiltered //|| name.isEmpty()
+        const bool anyFieldMatch = (isNameFiltered
                 //|| isSurnameFiltered
                 );
 
-        return rowInRange(sourceRow) && anyFieldMatch && !isHidden;// && anyFieldMatch && rowInRange(sourceRow);
-        //return true;
-        //return isGuidValid && anyFieldMatch && rowInRange(sourceRow);
+        return !isHidden && isInRange && anyFieldMatch;
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
@@ -799,6 +858,8 @@ public:
 Q_DECLARE_METATYPE(PagedItemMapper*)
 Q_DECLARE_METATYPE(std::shared_ptr<PagedItemMapper>)
 
+/// \see doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
+/// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
 class PagedItemListProxyFilterModel : public QAbstractProxyModel
 {
     Q_OBJECT
@@ -809,11 +870,11 @@ public:
     , Total
   };
 
-  enum class WorkMode {
+  /*enum class WorkMode {
     Online = 0
     , Offline
     , Total
-  };
+  };*/
 
   explicit PagedItemListProxyFilterModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
     connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
@@ -824,26 +885,41 @@ public:
 
   void setPageSize(int pageSize) {
     m_pageSize = pageSize;
+
+      /*beginInsertRows(QModelIndex(), 0, 0);
+      endInsertRows();*/
   }
 
   int getPageSize() const {
     return m_pageSize;
   }
 
-  void setWorkMode(WorkMode mode) {
+  /*void setWorkMode(WorkMode mode) {
     m_workMode = mode;
   }
 
   WorkMode getWorkMode() const {
     return m_workMode;
-  }
+  }*/
 
   void setPagesTotal(int val) {
     m_onlinePagesTotal = val;
+
+      /*beginInsertRows(QModelIndex(), 0, 0);
+      endInsertRows();*/
   }
 
-  int getOnlinePagesTotal() const {
+  int getPagesTotal() const {
     return m_onlinePagesTotal;
+  }
+
+  ItemListModel* getDataSource() const {
+    return m_dataSource;
+  }
+
+  void setDataSource(ItemListModel* datasource) {
+    Q_ASSERT(datasource);
+    m_dataSource = datasource;
   }
 
 public slots:
@@ -856,12 +932,16 @@ public slots:
 protected:
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
-    return getOnlinePagesTotal();
+    return getPagesTotal();
+
+    /// \note need to show something to user, so we will add empty page if no pages recieved
+    //return std::max(getPagesTotal(), 1);
+
     /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
       return getOnlinePagesTotal();
     }
 
-    int pagesTotal = 1;
+    int pagesTotal = 0;
     if (getPageSize() != 0) {
       std::div_t res = std::div(sourceModel()->rowCount(), getPageSize());
       // Fast ceiling of an integer division
@@ -904,9 +984,15 @@ protected:
 // m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
     PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
 
-    ItemTableProxyModel* itemTableProxyModel1 = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
-    ItemTableProxyModel* itemTableProxyModel2 = static_cast<ItemTableProxyModel*>(itemTableProxyModel1->sourceModel());
-    ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel2->sourceModel());
+    //ItemTableProxyModel* itemTableProxyModel1 = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
+    //ItemTableProxyModel* itemTableProxyModel2 = static_cast<ItemTableProxyModel*>(itemTableProxyModel1->sourceModel());
+
+    ItemListModel* itemListModel = getDataSource();
+    if (!itemListModel) {
+      return result;
+    }
+
+    //ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel2->sourceModel());
 
     QList<std::shared_ptr<ItemMapper>> items;
     /*int pageStartCursor = index.row() * getPageSize();
@@ -981,21 +1067,26 @@ protected:
     return res;
   }
 
+  // Returns the parent of the model index, or QModelIndex() if it has no parent.
   QModelIndex parent(const QModelIndex& child) const Q_DECL_OVERRIDE {
     return QModelIndex();
   }
 
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
     QModelIndex res;
-    if(proxyIndex.isValid())
+
+    if(!proxyIndex.isValid())
     {
-      if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
-      {
-         res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
-      } else {
-         res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
-      }
+      return res;
     }
+
+    if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
+    {
+       res = createIndex(proxyIndex.row(), proxyIndex.column(), (quintptr)-1);
+    } else {
+       res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
+    }
+
     return res;
   }
 
@@ -1007,36 +1098,39 @@ protected:
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    if (!index.isValid())
+    if (!index.isValid()) {
       return Qt::ItemIsEnabled;
+    }
 
    Qt::ItemFlags res;
    if(index.column() >= sourceModel()->columnCount() && index.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
    {
       // adds exta columns
       res = QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
-   }
-   else
-   {
+   } else {
       res = sourceModel()->flags(mapToSource(index));
    }
    return res;
   }
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole)
-        return QVariant();
+    if (role != Qt::DisplayRole) {
+      return QVariant();
+    }
 
-    if (orientation == Qt::Horizontal)
-        return QString("Column: %1").arg(section);
-    else
-        return QString("Row: %1").arg(section);
+    if (orientation == Qt::Horizontal) {
+      return QString("Column: %1").arg(section);
+    } else {
+      return QString("Row: %1").arg(section);
+    }
   }
 
 private:
   int m_pageSize = 1;
-  WorkMode m_workMode = WorkMode::Total;
+  //WorkMode m_workMode = WorkMode::Total;
   int m_onlinePagesTotal = -1;
+
+  ItemListModel* m_dataSource;
 };
 
 Q_DECLARE_METATYPE(PagedItemListProxyFilterModel*)

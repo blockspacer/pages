@@ -24,6 +24,8 @@ public:
 
   QVariant getPersonsPage() const;
 
+  void clearContents();
+
   //void clearPage();
 
   //void setMapper(QDataWidgetMapper* mapper);

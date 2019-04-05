@@ -21,16 +21,8 @@ QVariant PagedItemWidget::getPersonsPage() const
   return m_PersonsPage;
 }
 
-const QByteArray PagedItemWidget::personsPagePropertyName() const {
-  const int propertyOffset = metaObject()->propertyOffset();
-  return metaObject()->property(propertyOffset).name();
-}
-
-void PagedItemWidget::setPersonsPage(const QVariant &val)
+void PagedItemWidget::clearContents()
 {
-  qDebug() << "setPersonsPage" << val;
-  m_PersonsPage = val;
-
   // remove all page widgets
   {
     QLayoutItem* item;
@@ -43,6 +35,19 @@ void PagedItemWidget::setPersonsPage(const QVariant &val)
       delete item;
     }
   }
+}
+
+const QByteArray PagedItemWidget::personsPagePropertyName() const {
+  const int propertyOffset = metaObject()->propertyOffset();
+  return metaObject()->property(propertyOffset).name();
+}
+
+void PagedItemWidget::setPersonsPage(const QVariant &val)
+{
+  qDebug() << "setPersonsPage" << val;
+  m_PersonsPage = val;
+
+  clearContents();
 
   QList<std::shared_ptr<ItemMapper>> itemList = qvariant_cast<QList<std::shared_ptr<ItemMapper>>>(val.value<QVariant>());
   for (int i = 0; i < itemList.size(); i++) {

@@ -73,7 +73,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>350</width>
+           <width>400</width>
            <height>0</height>
           </size>
          </property>
@@ -85,7 +85,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>348</width>
+            <width>398</width>
             <height>716</height>
            </rect>
           </property>
@@ -122,7 +122,7 @@
                   <item>
                    <widget class="QCheckBox" name="clearCacheOnPagingCheckBox">
                     <property name="text">
-                     <string>Clear cache on paging</string>
+                     <string>Force clear cache on paging</string>
                     </property>
                    </widget>
                   </item>
