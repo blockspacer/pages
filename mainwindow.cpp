@@ -7,14 +7,27 @@
 #include <QAbstractItemModelTester>
 #endif
 
+enum class FilterMode {
+  StaticString = 0
+  , RegEx
+};
+
 /// \note place no more than kItemsPerPage items into each ItemListModel
 static int kItemsPerPage = 2;
 
 static int filterColumn = static_cast<int>(ItemModel::Columns::Name);
 
+static int sortColumn = static_cast<int>(ItemModel::Columns::Name);
+
+static int sortRoleItemTableProxyFilterModel = static_cast<int>(ItemTableProxyFilterModel::SortRole::SourceRow);
+
+static int sortRolePagedItemTableProxyFilterModel = static_cast<int>(PagedItemTableProxyFilterModel::SortRole::SourceRow);
+
 static bool isDisconnected = false;
 
 static bool enableAbstractItemModelTester = true;
+
+static FilterMode filterMode = FilterMode::StaticString;
 
 //static ItemListModel::Roles gFilterRole = ItemListModel::Roles::Name;
 
@@ -439,7 +452,12 @@ m_ui(new Ui::MainWindow)
     pageNum = std::max(pageNum, 0);
 
     m_ui->searchEdit->setText(m_ui->searchEdit->text());
-    m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+
+    if (filterMode == FilterMode::StaticString) {
+      m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+    } else if (filterMode == FilterMode::RegEx) {
+      m_filterItemTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
+    }
 
     FilterSettings filterSettings;
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
@@ -479,9 +497,25 @@ m_ui(new Ui::MainWindow)
   connect(m_ui->filterColComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int val) {
     Q_UNUSED(this);
 
+    Q_ASSERT(filterColumn >= 0 && filterColumn <= (static_cast<int>(ItemModel::Columns::Total) - 1));
+
     filterColumn = val;
 
     m_filterItemTableProxyModel->setFilterKeyColumn(filterColumn);
+
+    // // Invalidates the current sorting and filtering.
+    m_filterItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
+  });
+
+  connect(m_ui->sortColComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int val) {
+    Q_UNUSED(this);
+
+    Q_ASSERT(sortColumn >= 0 && sortColumn <= (static_cast<int>(ItemModel::Columns::Total) - 1));
+
+    sortColumn = val;
+
+    m_ui->tableView_2->sortByColumn(sortColumn, Qt::AscendingOrder);
 
     // // Invalidates the current sorting and filtering.
     m_filterItemTableProxyModel->invalidate();
@@ -505,7 +539,11 @@ m_ui(new Ui::MainWindow)
   {
     const int resetPageIndex = 0;
 
-    m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+    if (filterMode == FilterMode::StaticString) {
+      m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+    } else if (filterMode == FilterMode::RegEx) {
+      m_filterItemTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
+    }
 
     FilterSettings filterSettings;
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
@@ -546,7 +584,12 @@ m_ui(new Ui::MainWindow)
     refreshPageIndex = std::max(refreshPageIndex, 0);
 
     m_ui->searchEdit->setText(m_ui->searchEdit->text());
-    m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+
+    if (filterMode == FilterMode::StaticString) {
+      m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+    } else if (filterMode == FilterMode::RegEx) {
+      m_filterItemTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
+    }
 
     FilterSettings filterSettings;
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
@@ -574,6 +617,7 @@ m_ui(new Ui::MainWindow)
 
     m_ui->searchEdit->setText("");
     m_filterItemTableProxyModel->setFilterFixedString("");
+    //m_filterItemTableProxyModel->setFilterRegExp("");
 
     FilterSettings filterSettings;
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
@@ -637,6 +681,7 @@ m_ui(new Ui::MainWindow)
 
   m_filterItemTableProxyModel->setSourceModel(m_itemTableProxyModel);
   m_filterItemTableProxyModel->setDynamicSortFilter(true);
+  m_filterItemTableProxyModel->setSortRole(sortRoleItemTableProxyFilterModel);
   m_filterItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
   m_filterItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
   // Invalidates the current sorting and filtering.
@@ -645,6 +690,7 @@ m_ui(new Ui::MainWindow)
 
   m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
   m_pagedItemTableProxyModel->setDynamicSortFilter(true);
+  m_filterItemTableProxyModel->setSortRole(sortRolePagedItemTableProxyFilterModel);
   m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
   // Invalidates the current sorting and filtering.
@@ -655,12 +701,18 @@ m_ui(new Ui::MainWindow)
   m_pagedItemListProxyFilterModel->setExtraDataSource(m_itemListModelCache.get());
 
   m_ui->tableView->setModel(m_pagedItemTableProxyModel);
+  m_ui->tableView->setAlternatingRowColors(true);
+  m_ui->tableView->setSortingEnabled(true);
+  m_ui->tableView->sortByColumn(sortColumn, Qt::AscendingOrder);
   m_ui->tableView->setColumnWidth(0, 150); // name
   m_ui->tableView->setColumnWidth(1, 150); // surname
   m_ui->tableView->update();
   m_ui->tableView->show();
 
   m_ui->tableView_2->setModel(m_filterItemTableProxyModel);
+  m_ui->tableView_2->setAlternatingRowColors(true);
+  m_ui->tableView_2->setSortingEnabled(true);
+  m_ui->tableView_2->sortByColumn(sortColumn, Qt::AscendingOrder);
   m_ui->tableView_2->setColumnWidth(0, 150); // name
   m_ui->tableView_2->setColumnWidth(1, 150); // surname
   m_ui->tableView_2->update();

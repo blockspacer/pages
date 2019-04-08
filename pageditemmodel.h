@@ -52,6 +52,7 @@ private:
 Q_DECLARE_METATYPE(Item)
 Q_DECLARE_METATYPE(Item*)
 
+/// \brief create model for item. Allows to add extra columns.
 class ItemModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -64,7 +65,7 @@ public:
     Name = 0
     , Surname
     , GUID
-    , ItemMode // custom column
+    , ItemMode // custom column, allows to mark unloaded items e.t.c.
     , Total
   };
 
@@ -191,18 +192,19 @@ public:
     Q_UNUSED(parent);
     Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
+    /// \note modelholds 1 item
     return 1;
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
+
     return static_cast<int>(Columns::Total);
   }
 
   bool setData(const QModelIndex &index, const QVariant &value, int role) Q_DECL_OVERRIDE
   {
     Q_UNUSED(role);
-    //qDebug() << "setData PersonsModel " << value << value.toString();
 
     if (!index.isValid()) {
       return false;
@@ -249,6 +251,7 @@ private:
 
 Q_DECLARE_METATYPE(ItemModel*)
 
+/// \brief allows to map data changes in model to some widgets
 class ItemMapper : public QDataWidgetMapper
 {
     Q_OBJECT
@@ -263,13 +266,14 @@ public:
 Q_DECLARE_METATYPE(ItemMapper*)
 Q_DECLARE_METATYPE(std::shared_ptr<ItemMapper>)
 
+/// \brief collection of item mappers.
+/// \note we can can source model from mapper.
 class ItemListModel : public QAbstractListModel
 {
     Q_OBJECT
 
 public:
   enum class Columns {
-    //Item = 0
      /// \note zero column must be convertable to string
      /// \see `Tests model's implementation of QAbstractItemModel::data()`
      ///      in QAbstractItemModelTesterPrivate::data()
@@ -289,10 +293,6 @@ public:
   int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
     Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
-
-    /*if( parent.isValid() ) {
-      return 0;
-    }*/
 
     return m_items.size();
   }
@@ -322,7 +322,6 @@ public:
 
     return true;
   }
-
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
     if (role != Qt::DisplayRole) {
@@ -960,6 +959,14 @@ class PagedItemTableProxyFilterModel : public QSortFilterProxyModel
 {
     Q_OBJECT
 
+public:
+    enum class SortRole {
+      Start = Qt::UserRole + 1
+      , SourceRow
+      , Column
+      , Total
+    };
+
 public slots:
   void slotSourceModelChanged(void);
   void slotDataChanged(const QModelIndex& first, const QModelIndex& last);
@@ -1027,7 +1034,24 @@ protected:
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
+      QVariant leftData = sourceModel()->data(left);
+      QVariant rightData = sourceModel()->data(right);
+
+      if (sortRole() == static_cast<int>(SortRole::SourceRow) || !leftData.isValid() || !rightData.isValid()) {
         return left.row() < right.row(); // sort from first added to last added
+      }
+
+      if (sortRole() == static_cast<int>(SortRole::Column)) {
+        if (leftData.type() == QVariant::DateTime) {
+          return leftData.toDateTime() < rightData.toDateTime();
+        } else if (leftData.type() == QVariant::String) {
+          return leftData.toString() < rightData.toString();
+        } else if (leftData.type() == QVariant::Int) {
+          return leftData.toInt() < rightData.toInt();
+        }
+      }
+
+      return left.row() < right.row(); // sort from first added to last added
     }
 
     // Returns the parent of the model index, or QModelIndex() if it has no parent.
@@ -1066,12 +1090,19 @@ private:
 Q_DECLARE_METATYPE(PagedItemTableProxyFilterModel*)
 Q_DECLARE_METATYPE(std::shared_ptr<PagedItemTableProxyFilterModel>)
 
-
 /// \see doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
 /// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
 class ItemTableProxyFilterModel : public QSortFilterProxyModel
 {
     Q_OBJECT
+
+public:
+    enum class SortRole {
+      Start = Qt::UserRole + 1
+      , SourceRow
+      , Column
+      , Total
+    };
 
 public slots:
   void slotSourceModelChanged(void);
@@ -1165,7 +1196,24 @@ protected:
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
+      QVariant leftData = sourceModel()->data(left);
+      QVariant rightData = sourceModel()->data(right);
+
+      if (sortRole() == static_cast<int>(SortRole::SourceRow) || !leftData.isValid() || !rightData.isValid()) {
         return left.row() < right.row(); // sort from first added to last added
+      }
+
+      if (sortRole() == static_cast<int>(SortRole::Column)) {
+        if (leftData.type() == QVariant::DateTime) {
+          return leftData.toDateTime() < rightData.toDateTime();
+        } else if (leftData.type() == QVariant::String) {
+          return leftData.toString() < rightData.toString();
+        } else if (leftData.type() == QVariant::Int) {
+          return leftData.toInt() < rightData.toInt();
+        }
+      }
+
+      return left.row() < right.row(); // sort from first added to last added
     }
 
     // Returns the parent of the model index, or QModelIndex() if it has no parent.
