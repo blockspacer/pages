@@ -1401,8 +1401,9 @@ protected:
       //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
       if(!idx.isValid()) {
-        return false;
+        continue;
       }
+
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
 
       /*{
@@ -1499,11 +1500,11 @@ protected:
     return res;
   }
 
-  bool canFetchMore(const QModelIndex & index) const Q_DECL_OVERRIDE
+  /*bool canFetchMore(const QModelIndex & index) const Q_DECL_OVERRIDE
   {
     Q_UNUSED(index);
     return false;
-  }
+  }*/
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {

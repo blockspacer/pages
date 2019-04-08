@@ -162,6 +162,27 @@
                     </property>
                    </widget>
                   </item>
+                  <item row="4" column="0">
+                   <widget class="QComboBox" name="filterColComboBox">
+                    <item>
+                     <property name="text">
+                      <string>name</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>surname</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="4" column="1">
+                   <widget class="QLabel" name="label_6">
+                    <property name="text">
+                     <string>filter column</string>
+                    </property>
+                   </widget>
+                  </item>
                  </layout>
                 </item>
                 <item>

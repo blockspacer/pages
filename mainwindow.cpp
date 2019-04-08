@@ -10,6 +10,8 @@
 /// \note place no more than kItemsPerPage items into each ItemListModel
 static int kItemsPerPage = 2;
 
+static int filterColumn = static_cast<int>(ItemModel::Columns::Name);
+
 static bool isDisconnected = false;
 
 static bool enableAbstractItemModelTester = true;
@@ -97,7 +99,20 @@ static QList<Item> retrieveRemoteFiltered(const FilterSettings& filter/*, const 
       // TODO
     }*/
 
-    filterItem = item.getName(); // TODO
+    switch (filterColumn) {
+      case static_cast<int>(ItemModel::Columns::Name): {
+        filterItem = item.getName();
+        break;
+      }
+      case static_cast<int>(ItemModel::Columns::Surname): {
+        filterItem = item.getSurname();
+        break;
+      }
+      case static_cast<int>(ItemModel::Columns::GUID): {
+        filterItem = QString::number(item.getGUID());
+        break;
+      }
+    }
 
     // indexIn attempts to find a match in str from position offset (0 by default).
     // Returns the position of the first match, or -1 if there was no match.
@@ -220,7 +235,7 @@ m_ui(new Ui::MainWindow)
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
   m_filterItemTableProxyModel->setDynamicSortFilter(true);
-  m_filterItemTableProxyModel->setFilterKeyColumn(static_cast<int>(ItemModel::Columns::Name));
+  m_filterItemTableProxyModel->setFilterKeyColumn(filterColumn);
 
   m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
 
@@ -459,6 +474,18 @@ m_ui(new Ui::MainWindow)
     isDisconnected = state > 0 ? true : false;
     qDebug() << "isDisconnected = " << isDisconnected;
     //m_ui->refreshButton->setEnabled(!isDisconnected);
+  });
+
+  connect(m_ui->filterColComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int val) {
+    Q_UNUSED(this);
+
+    filterColumn = val;
+
+    m_filterItemTableProxyModel->setFilterKeyColumn(filterColumn);
+
+    // // Invalidates the current sorting and filtering.
+    m_filterItemTableProxyModel->invalidate();
+    m_pagedItemTableProxyModel->invalidate();
   });
 
   connect(m_ui->skipNotLoadedCheckBox, &QCheckBox::stateChanged, [this](int state) {
