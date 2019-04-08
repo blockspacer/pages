@@ -19,6 +19,10 @@ public:
     : m_guid(guid), m_name(name), m_surname(surname)
   { }
 
+  QString toString() const {
+    return QString::number(m_guid) + " " + m_name + " " + m_surname;
+  }
+
   QString getName() const {
     return m_name;
   }
@@ -79,6 +83,10 @@ public:
   }
 
   virtual ~ItemModel() {
+  }
+
+  QString itemAsString() const {
+    return m_item.toString();
   }
 
   QString getName() const {
@@ -173,17 +181,37 @@ public:
     switch(column)
     {
       case static_cast<int>(Columns::Name):
+      {
+        if (!value.canConvert<QString>()) {
+          return false;
+        }
         setName(value.toString()); // emits dataChanged signal
         break;
+      }
       case static_cast<int>(Columns::Surname):
+      {
+        if (!value.canConvert<QString>()) {
+          return false;
+        }
         setSurname(value.toString()); // emits dataChanged signal
         break;
+      }
       case static_cast<int>(Columns::GUID):
+      {
+        if (!value.canConvert<int>()) {
+          return false;
+        }
         setGUID(value.toInt()); // emits dataChanged signal
         break;
+      }
       case static_cast<int>(Columns::ItemMode):
+      {
+        if (!value.canConvert<int>()) {
+          return false;
+        }
         setItemMode(static_cast<ItemMode>(value.toInt())); // emits dataChanged signal
         break;
+      }
     }
     return true;
   }
@@ -354,38 +382,6 @@ public:
       qCritical( "ComputerListModel::data(): index out of range!" );
     }
 
-    switch( role )
-    {
-    case Qt::SizeHintRole:
-      return QVariant(QSize( 25, 25 ));
-
-    /*case Qt::DecorationRole:
-      return computerDecorationRole( computerControl );
-
-    case Qt::ToolTipRole:
-      return computerToolTipRole( computerControl );
-
-    case Qt::DisplayRole:
-      return computerDisplayRole( computerControl );
-
-    case Qt::InitialSortOrderRole:
-      return computerControl->computer().room() + computerControl->computer().name() +
-          computerControl->computer().hostAddress() + computerControl->userLoginName();
-
-    case UidRole:
-      return computerControl->computer().networkObjectUid();*/
-
-    case Qt::CheckStateRole:
-      return Qt::Unchecked;
-
-    default:
-      break;
-    }
-
-    /*if (role == Qt::SizeHintRole) {
-      return QVariant(QSize( 25, 25 ));
-    }*/
-
     std::shared_ptr<ItemMapper> item = m_items.at(index.row());
     if (!item)
       return QVariant();
@@ -393,6 +389,21 @@ public:
     ItemModel* model = static_cast<ItemModel*>(item->model());
     if (!model)
       return QVariant();
+
+    switch( role )
+    {
+    case Qt::SizeHintRole:
+      return QVariant(QSize( 25, 25 ));
+    case Qt::ToolTipRole:
+    //case Qt::DisplayRole:
+    case Qt::DecorationRole:
+    case Qt::InitialSortOrderRole:
+      return model->itemAsString();
+    case Qt::CheckStateRole:
+      return QVariant();
+    default:
+      break;
+    }
 
     if (role != Qt::DisplayRole && role != Qt::EditRole) {
         return QStringLiteral("%1").arg( model->getGUID() ); // disable tooltips, icons, e.t.c
@@ -445,7 +456,7 @@ public:
 
         //sourceReset();
 
-        //emit dataChanged(indexMapped, indexMapped); // TODO
+        emit dataChanged(indexMapped, indexMapped); // TODO
       });
     }
   }
@@ -601,7 +612,7 @@ public:
 
         //sourceReset();
 
-        //emit dataChanged(indexMapped, indexMapped); // TODO
+        emit dataChanged(indexMapped, indexMapped); // TODO
       });
     }
 
@@ -762,8 +773,6 @@ protected:
   {
     Q_UNUSED(role);
 
-    qDebug() << "setData ItemListModel " << value << value.toString();
-
     if (!index.isValid()) {
       return false;
     }
@@ -810,14 +819,6 @@ protected:
       return QVariant();
     }
 
-    if (role == Qt::SizeHintRole) {
-      return QVariant(QSize( 25, 25 ));
-    }
-
-    if(role != Qt::DisplayRole && role != Qt::EditRole){
-      return QVariant(); // disable tooltips, icons, e.t.c
-    }
-
     QVariant result;
 
     std::shared_ptr<ItemMapper> mapper = getSourceListModel()->getItemAt(index.row());
@@ -828,6 +829,25 @@ protected:
     ItemModel* model = static_cast<ItemModel*>(mapper->model());
     if(!model) {
       return result;
+    }
+
+    switch( role )
+    {
+    case Qt::SizeHintRole:
+      return QVariant(QSize( 25, 25 ));
+    case Qt::ToolTipRole:
+    //case Qt::DisplayRole:
+    case Qt::DecorationRole:
+    case Qt::InitialSortOrderRole:
+      return model->itemAsString();
+    case Qt::CheckStateRole:
+      return QVariant();
+    default:
+      break;
+    }
+
+    if(role != Qt::DisplayRole && role != Qt::EditRole){
+      return QVariant(); // disable tooltips, icons, e.t.c
     }
 
     if (index.column() < static_cast<int>(ItemModel::Columns::Total)) {
@@ -884,6 +904,7 @@ protected:
     return false; // flat model, no hierarchy
   }
 
+  ///\brief returns index of source model
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
     QModelIndex res;
     if (!proxyIndex.isValid()) {
@@ -1020,7 +1041,11 @@ protected:
         }
 
         const QModelIndex& indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
-        const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
+        const QVariant& itemModeData = sourceModel()->data(indexItemMode);
+        if (!itemModeData.canConvert<int>()) {
+          return false;
+        }
+        const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(itemModeData.toInt());
         //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
         const bool isNotLoaded = itemMode == ItemModel::ItemMode::NotLoaded;
 
@@ -1165,15 +1190,18 @@ protected:
           if(!indexfilterColumn.isValid()) {
             return false;
           }
-          const QString& filterColumnData = sourceModel()->data(indexfilterColumn).toString();
-          //const bool isNameFiltered = name.contains(filterPattern, filterCaseSensitivity());
+
+          const QVariant& filterData = sourceModel()->data(indexfilterColumn);
+          if (!filterData.canConvert<QString>()) {
+            return false;
+          }
+          const QString& filterColumnData = filterData.toString();
 
           // indexIn attempts to find a match in str from position offset (0 by default).
           // Returns the position of the first match, or -1 if there was no match.
-          const bool isNameFiltered = regexp.indexIn(filterColumnData) != -1;
-          anyFieldMatch = (isNameFiltered
-                //|| isSurnameFiltered
-                );
+          const bool isColumnFiltered = regexp.indexIn(filterColumnData) != -1;
+
+          anyFieldMatch = isColumnFiltered;
         }
 
         /*const QModelIndex& indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
@@ -1385,8 +1413,6 @@ protected:
     Q_UNUSED(value);
     Q_UNUSED(role);
 
-    //qDebug() << "setData ItemListModel " << value << value.toString();
-
     if (!index.isValid()) {
       return false;
     }
@@ -1395,56 +1421,41 @@ protected:
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role == Qt::SizeHintRole) {
-      return QVariant(QSize( 25, 25 ));
-    }
-
-    if(role != Qt::DisplayRole && role != Qt::EditRole){
-      return QVariant(); // disable tooltips, icons, e.t.c
-    }
-
     if (!index.isValid()) {
       return QVariant();
     }
 
     QVariant result;
 
-// m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
-    PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
+    switch( role )
+    {
+    case Qt::SizeHintRole:
+      return QVariant(QSize( 25, 25 ));
+    case Qt::ToolTipRole:
+    //case Qt::DisplayRole:
+    case Qt::DecorationRole:
+    case Qt::InitialSortOrderRole:
+    case Qt::CheckStateRole:
+      return QVariant();
+    default:
+      break;
+    }
 
-    //ItemTableProxyModel* itemTableProxyModel1 = static_cast<ItemTableProxyModel*>(pagedItemTableProxyFilterModel->sourceModel());
-    //ItemTableProxyModel* itemTableProxyModel2 = static_cast<ItemTableProxyModel*>(itemTableProxyModel1->sourceModel());
+    if(role != Qt::DisplayRole && role != Qt::EditRole){
+      return QVariant(); // disable tooltips, icons, e.t.c
+    }
+
+    PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
 
     ItemListModel* itemListModel = getExtraDataSource();
     if (!itemListModel) {
       return result;
     }
 
-    //ItemListModel* itemListModel = static_cast<ItemListModel*>(itemTableProxyModel2->sourceModel());
-
     QList<std::shared_ptr<ItemMapper>> items;
-    /*int pageStartCursor = index.row() * getPageSize();
-    for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
-      QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::GUID));
-      QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
-      qDebug() << "pageStartCursor" << data << i;
-      if (!data.isValid()) {
-        continue;
-      }
-      int dataGUID = data.value<QVariant>().toInt();
-
-      std::shared_ptr<ItemMapper> item = itemListModel->getItemById(dataGUID);
-      if (!item) {
-        continue;
-      }
-      items.push_back(item);
-    }*/
 
     int pageStartCursor = 0;//index.row() * getPageSize();
-    /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
-      // in online mode we don`t cache data
-      pageStartCursor = 0;
-    }*/
+
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
@@ -1453,17 +1464,12 @@ protected:
       }
 
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
-
-      /*{
-        QModelIndex idx2 = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::Surname));
-        QVariant data2 = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
-        qDebug() << "pageStartCursor" << data2 << i;
-      }*/
-
       if (!data.isValid()) {
         continue;
       }
-
+      if (!data.canConvert<int>()) {
+        continue;
+      }
       int SourceMappedRowNum = data.value<QVariant>().toInt();
       std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(SourceMappedRowNum);
       if (!item) {
@@ -1519,6 +1525,7 @@ protected:
     return false; // flat model, no hierarchy
   }
 
+  ///\brief returns index of source model
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
     QModelIndex res;
 
