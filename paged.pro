@@ -44,6 +44,8 @@ FORMS += \
     item_widget.ui \
     paged_item_widget.ui
 
+include(test/UnitTest.pri)
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

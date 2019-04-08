@@ -247,14 +247,14 @@ m_ui(new Ui::MainWindow)
 
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
-  m_filterItemTableProxyModel->setDynamicSortFilter(true);
+  m_filterItemTableProxyModel->setDynamicSortFilter(false);
   m_filterItemTableProxyModel->setFilterKeyColumn(filterColumn);
 
   m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
 
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
-  m_pagedItemTableProxyModel->setDynamicSortFilter(true);
+  m_pagedItemTableProxyModel->setDynamicSortFilter(false);
 
   m_pagedItemListProxyFilterModel = new PagedItemListProxyFilterModel();
 
@@ -429,6 +429,9 @@ m_ui(new Ui::MainWindow)
       m_lastFetchedData = nullptr;
     }
     //onDataFetched(prevPageIndex, m_lastFetchedData);
+
+    qDebug() << "m_pagedItemMapper->setCurrentIndex(prevPageIndex);" << prevPageIndex;
+    //m_pagedItemMapper->toPrevious();
 
     // allows dynamic loading while using pagination
     m_pagedItemMapper->setCurrentIndex(prevPageIndex);
@@ -639,12 +642,12 @@ m_ui(new Ui::MainWindow)
     m_filterItemTableProxyModel->invalidate();
     m_pagedItemTableProxyModel->invalidate();
 
-    m_filterItemTableProxyModel->submit();
-    m_pagedItemTableProxyModel->submit();
+    //m_filterItemTableProxyModel->submit();
+    //m_pagedItemTableProxyModel->submit();
 
     // allows dynamic loading while using pagination
     m_pagedItemMapper->setCurrentIndex(resetPageIndex);
-    m_pagedItemMapper->submit();
+    //m_pagedItemMapper->submit();
   });
 
   connect(m_ui->nextButton, &QAbstractButton::clicked, [this]() {
@@ -666,9 +669,13 @@ m_ui(new Ui::MainWindow)
 
     //onDataFetched(nextPageIndex, m_lastFetchedData);
 
+    qDebug() << "m_pagedItemMapper->setCurrentIndex(nextPageIndex);" << nextPageIndex;
+
     // allows dynamic loading while using pagination
     m_pagedItemMapper->setCurrentIndex(nextPageIndex);
-    m_pagedItemMapper->submit();
+    //m_pagedItemMapper->submit();
+
+    //m_pagedItemMapper->toNext();
 
     /*m_ui->tableView->update();
     m_ui->tableView->show();
@@ -680,7 +687,11 @@ m_ui(new Ui::MainWindow)
   connect(m_pagedItemMapper.get(), &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
 
   m_filterItemTableProxyModel->setSourceModel(m_itemTableProxyModel);
-  m_filterItemTableProxyModel->setDynamicSortFilter(true);
+
+  // dynamicSortFilter ensures that the model is sorted and filtered whenever
+  // the contents of the source model change.
+  m_filterItemTableProxyModel->setDynamicSortFilter(false);
+
   m_filterItemTableProxyModel->setSortRole(sortRoleItemTableProxyFilterModel);
   m_filterItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
   m_filterItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
@@ -689,7 +700,11 @@ m_ui(new Ui::MainWindow)
   //m_filterItemTableProxyModel->submit();
 
   m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
-  m_pagedItemTableProxyModel->setDynamicSortFilter(true);
+
+  // dynamicSortFilter ensures that the model is sorted and filtered whenever
+  // the contents of the source model change.
+  m_pagedItemTableProxyModel->setDynamicSortFilter(false);
+
   m_filterItemTableProxyModel->setSortRole(sortRolePagedItemTableProxyFilterModel);
   m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
@@ -701,18 +716,18 @@ m_ui(new Ui::MainWindow)
   m_pagedItemListProxyFilterModel->setExtraDataSource(m_itemListModelCache.get());
 
   m_ui->tableView->setModel(m_pagedItemTableProxyModel);
-  m_ui->tableView->setAlternatingRowColors(true);
-  m_ui->tableView->setSortingEnabled(true);
-  m_ui->tableView->sortByColumn(sortColumn, Qt::AscendingOrder);
+  //m_ui->tableView->setAlternatingRowColors(true);
+  m_ui->tableView->setSortingEnabled(false);
+  //m_ui->tableView->sortByColumn(sortColumn, Qt::AscendingOrder);
   m_ui->tableView->setColumnWidth(0, 150); // name
   m_ui->tableView->setColumnWidth(1, 150); // surname
   m_ui->tableView->update();
   m_ui->tableView->show();
 
   m_ui->tableView_2->setModel(m_filterItemTableProxyModel);
-  m_ui->tableView_2->setAlternatingRowColors(true);
-  m_ui->tableView_2->setSortingEnabled(true);
-  m_ui->tableView_2->sortByColumn(sortColumn, Qt::AscendingOrder);
+  //m_ui->tableView_2->setAlternatingRowColors(true);
+  m_ui->tableView_2->setSortingEnabled(false);
+  //m_ui->tableView_2->sortByColumn(sortColumn, Qt::AscendingOrder);
   m_ui->tableView_2->setColumnWidth(0, 150); // name
   m_ui->tableView_2->setColumnWidth(1, 150); // surname
   m_ui->tableView_2->update();
@@ -748,7 +763,7 @@ m_ui(new Ui::MainWindow)
         m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, requestPageNum, kItemsPerPage, filterSettings);
         onDataFetched(m_lastFetchedData->requestedPageNum, m_lastFetchedData);
         onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
-        //m_pagedItemMapper->toFirst();
+
         m_pagedItemMapper->setCurrentIndex(requestPageNum);
         //m_pagedItemMapper->submit();
     });
