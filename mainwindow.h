@@ -49,6 +49,12 @@ private:
   std::shared_ptr<PagedItemMapper> m_pagedItemMapper;
   std::shared_ptr<ItemListModel> m_itemListModelCache;
   PagedItemWidget* m_pagedItemWidget;
+
+  /// \note When you submit changes to the model, it gets reset
+  /// and all views (including all data mappers) along with it
+  /// So, we need to save last mapper index somewhere
+  int lastMapperPageNum = 0;
+
   //ItemPageListModel* m_pagedItemModel;
 };
 

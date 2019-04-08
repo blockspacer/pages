@@ -390,10 +390,6 @@ public:
     if (!model)
       return QVariant();
 
-    if (role != Qt::DisplayRole && role != Qt::EditRole) {
-        return QStringLiteral("%1").arg( model->getGUID() ); // disable tooltips, icons, e.t.c
-    }
-
     switch( role )
     {
     case Qt::SizeHintRole:
@@ -835,10 +831,6 @@ protected:
       return result;
     }
 
-    if(role != Qt::DisplayRole && role != Qt::EditRole){
-      return QVariant(); // disable tooltips, icons, e.t.c
-    }
-
     switch( role )
     {
     case Qt::SizeHintRole:
@@ -1067,8 +1059,6 @@ protected:
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
-      return left.row() < right.row(); // sort from first added to last added
-
       QVariant leftData = sourceModel()->data(left);
       QVariant rightData = sourceModel()->data(right);
 
@@ -1206,14 +1196,12 @@ protected:
             return false;
           }
           const QString& filterColumnData = filterData.toString();
-          //const bool isNameFiltered = name.contains(filterPattern, filterCaseSensitivity());
 
           // indexIn attempts to find a match in str from position offset (0 by default).
           // Returns the position of the first match, or -1 if there was no match.
-          const bool isNameFiltered = regexp.indexIn(filterColumnData) != -1;
-          anyFieldMatch = (isNameFiltered
-                //|| isSurnameFiltered
-                );
+          const bool isColumnFiltered = regexp.indexIn(filterColumnData) != -1;
+
+          anyFieldMatch = isColumnFiltered;
         }
 
         /*const QModelIndex& indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
@@ -1236,8 +1224,6 @@ protected:
     }
 
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const Q_DECL_OVERRIDE {
-      return left.row() < right.row(); // sort from first added to last added
-
       QVariant leftData = sourceModel()->data(left);
       QVariant rightData = sourceModel()->data(right);
 
@@ -1437,12 +1423,6 @@ protected:
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
     if (!index.isValid()) {
       return QVariant();
-    }
-
-
-
-    if(role != Qt::DisplayRole && role != Qt::EditRole){
-      return QVariant(); // disable tooltips, icons, e.t.c
     }
 
     QVariant result;
