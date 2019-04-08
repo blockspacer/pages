@@ -47,7 +47,7 @@ private:
   std::shared_ptr<ItemListModel> m_itemListModelCache;
 
   /// \brief converts flat item list to multi-column table model
-  /// Used for easier filtering, sorting, e.t.c.
+  /// Used for easier filtering, sorting, showing in TableView  e.t.c.
   ItemTableProxyModel* m_TableProxyModel;
 
   /// \brief provides filtering (search)

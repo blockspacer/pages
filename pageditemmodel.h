@@ -59,10 +59,8 @@ Q_DECLARE_METATYPE(Item*)
 /// \brief create model for item. Allows to add extra columns.
 class ItemModel : public QAbstractListModel
 {
-    Q_OBJECT
-
-Q_SIGNALS:
-    void guidChanged(const int &prevGUID, const int &newGUID);
+  Q_OBJECT
+  Q_PROPERTY(ItemMode itemMode READ getItemMode WRITE setItemMode NOTIFY itemModeChanged MEMBER m_itemMode)
 
 public:
   enum class Columns {
@@ -84,6 +82,11 @@ public:
     , Total
   };
 
+Q_SIGNALS:
+    void itemModeChanged(const ItemMode &val);
+    void guidChanged(const int &prevGUID, const int &newGUID);
+
+public:
   explicit ItemModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
   }
 
@@ -300,8 +303,13 @@ public:
   explicit ItemMapper(QObject *pParent = nullptr) : QDataWidgetMapper(pParent)
   {
   }
+
   virtual ~ItemMapper()
   {}
+
+  ItemModel* getItemModel() {
+    return static_cast<ItemModel*>(model());
+  }
 };
 
 Q_DECLARE_METATYPE(ItemMapper*)
@@ -364,18 +372,6 @@ public:
     return true;
   }
 
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole) {
-      return QVariant();
-    }
-
-    if (orientation == Qt::Horizontal) {
-      return QString("Column: %1").arg(section);
-    } else {
-      return QString("Row: %1").arg(section);
-    }
-  }
-
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
     if (!index.isValid()) {
@@ -395,11 +391,11 @@ public:
       qCritical( "ComputerListModel::data(): index out of range!" );
     }
 
-    std::shared_ptr<ItemMapper> item = m_items.at(index.row());
-    if (!item)
+    std::shared_ptr<ItemMapper> itemmapper = m_items.at(index.row());
+    if (!itemmapper)
       return QVariant();
 
-    ItemModel* model = static_cast<ItemModel*>(item->model());
+    ItemModel* model = itemmapper->getItemModel();
     if (!model)
       return QVariant();
 
@@ -428,7 +424,7 @@ public:
 
     QVariant result;
 
-    result = QVariant::fromValue(item);
+    result = QVariant::fromValue(itemmapper);
 
     return result;
   }
@@ -451,11 +447,6 @@ public:
     emit beginInsertRows(QModelIndex(), first, last);
 
     m_items.push_back(item);
-
-    /*if (item) {
-      int newGuid = static_cast<ItemModel*>(item->model())->getGUID();
-      m_guidToItem[newGuid] = item;
-    }*/
 
     emit endInsertRows();
 
@@ -547,6 +538,7 @@ public:
     }
   }
 
+  /// \note emits RemoveRows, InsertRows and dataChanged signals
   bool replaceItemAt(int rowIndex, std::shared_ptr<ItemMapper> newItem, QVector<int> roles = QVector<int>()) {
     Q_UNUSED(roles);
 
@@ -576,36 +568,18 @@ public:
 
     emit beginInsertRows(QModelIndex(), first, last);
 
-    /*std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
-    if (prevItem.get()) {
-      ItemModel* itemModel = static_cast<ItemModel*>(prevItem->model());
-      if(itemModel) {
-        int oldGuid = itemModel->getGUID();
-        m_guidToItem.remove(oldGuid);
-      }
-    }*/
-
-    //m_items.replace(rowIndex, newItem);
     m_items.insert(rowIndex, newItem);
+
+    emit endInsertRows();
 
 #ifdef QT_DEBUG
     // check that inserted item equals to item passed to function
     {
-      ItemModel* m1 = static_cast<ItemModel*>(m_items.at(rowIndex)->model());
-      ItemModel* m2 = static_cast<ItemModel*>(newItem->model());
+      ItemModel* m1 = m_items.at(rowIndex)->getItemModel();
+      ItemModel* m2 = newItem->getItemModel();
       Q_ASSERT(m1->itemAsString() == m2->itemAsString() );
     }
 #endif // QT_DEBUG
-
-    /*{
-      ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
-      if(itemModel) {
-        int newGuid = itemModel->getGUID();
-        m_guidToItem[newGuid] = newItem;
-      }
-    }*/
-
-    emit endInsertRows();
 
     const int itemRowId = rowIndex;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
@@ -648,22 +622,10 @@ public:
     return m_items.at(rowIndex);
   }
 
-  /*const std::shared_ptr<ItemMapper> getItemById(int guid) const {
-    if(!m_guidToItem.contains(guid)) {
-      qDebug() << "ItemListModel not contains guid = " << guid;
-      return nullptr;
-    }
-
-    QHash<int, std::shared_ptr<ItemMapper>>::const_iterator it = m_guidToItem.find(guid);
-
-    return it.value();
-  }*/
-
   void removeAllItems() {
     emit beginRemoveRows(QModelIndex(), 0, itemsTotal() - 1);
 
     m_items.clear();
-    //m_guidToItem.clear();
 
     emit endRemoveRows();
 
@@ -690,8 +652,9 @@ public:
   }
 
 private:
-  //QHash<int, std::shared_ptr<ItemMapper>> m_guidToItem;
   QList<std::shared_ptr<ItemMapper>> m_items;
+
+  /// \brief placeholder used to filter not loaded items
   std::shared_ptr<ItemMapper> m_dummyNotLoaded;
 };
 
@@ -769,7 +732,7 @@ protected:
       return false;
     }
 
-    ItemModel* model = static_cast<ItemModel*>(mapper->model());
+    ItemModel* model = mapper->getItemModel();
     if(!model) {
       return false;
     }
@@ -808,7 +771,7 @@ protected:
       return result;
     }
 
-    ItemModel* model = static_cast<ItemModel*>(mapper->model());
+    ItemModel* model = mapper->getItemModel();
     if(!model) {
       return result;
     }
@@ -924,18 +887,6 @@ protected:
    }
    return res;
   }
-
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole) {
-      return QVariant();
-    }
-
-    if (orientation == Qt::Horizontal) {
-      return QString("Column: %1").arg(section);
-    } else {
-      return QString("Row: %1").arg(section);
-    }
-  }
 };
 
 Q_DECLARE_METATYPE(ItemTableProxyModel*)
@@ -945,15 +896,22 @@ Q_DECLARE_METATYPE(std::shared_ptr<ItemTableProxyModel>)
 /// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
 class PagedItemTableProxyFilterModel : public QSortFilterProxyModel
 {
-    Q_OBJECT
+  Q_OBJECT
+
+  Q_PROPERTY(bool minSourceRowIndex READ filterMinSourceRowIndex WRITE setFilterMinSourceRowIndex NOTIFY minSourceRowIndexChanged MEMBER m_minSourceRowIndex)
+  Q_PROPERTY(bool maxSourceRowIndex READ filterMaxSourceRowIndex WRITE setFilterMaxSourceRowIndex NOTIFY maxSourceRowIndexChanged MEMBER m_maxSourceRowIndex)
 
 public:
-    enum class SortRole {
-      Start = Qt::UserRole + 1
-      , SourceRow
-      , Column
-      , Total
-    };
+  enum class SortRole {
+    Start = Qt::UserRole + 1
+    , SourceRow
+    , Column
+    , Total
+  };
+
+Q_SIGNALS:
+  void minSourceRowIndexChanged(const int& val);
+  void maxSourceRowIndexChanged(const int& val);
 
 public slots:
   void slotSourceModelChanged(void);
@@ -968,18 +926,18 @@ public:
       connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
     }
 
-    int filterMinSourceRowIndex() const { return minSourceRowIndex; }
+    int filterMinSourceRowIndex() const { return m_minSourceRowIndex; }
 
     void setFilterMinSourceRowIndex(const int rowNum){
-        minSourceRowIndex = rowNum;
+        m_minSourceRowIndex = rowNum;
         sourceReset();
         invalidateFilter();
     }
 
-    int filterMaxSourceRowIndex() const { return maxSourceRowIndex; }
+    int filterMaxSourceRowIndex() const { return m_maxSourceRowIndex; }
 
     void setFilterMaxSourceRowIndex(const int rowNum){
-        maxSourceRowIndex = rowNum;
+        m_maxSourceRowIndex = rowNum;
         sourceReset();
         invalidateFilter();
     }
@@ -1062,16 +1020,16 @@ protected:
 
 private:
     bool rowInRange(const int rowNum) const {
-        return (!isValidRow(minSourceRowIndex) || rowNum >= minSourceRowIndex)
-                && (!isValidRow(maxSourceRowIndex) || rowNum < maxSourceRowIndex);
+        return (!isValidRow(m_minSourceRowIndex) || rowNum >= m_minSourceRowIndex)
+                && (!isValidRow(m_maxSourceRowIndex) || rowNum < m_maxSourceRowIndex);
     }
 
     bool isValidRow(const int rowNum) const {
         return rowNum > 0 && rowNum < sourceModel()->rowCount();
     }
 
-    int minSourceRowIndex = -1;
-    int maxSourceRowIndex = -1;
+    int m_minSourceRowIndex = -1;
+    int m_maxSourceRowIndex = -1;
 };
 
 Q_DECLARE_METATYPE(PagedItemTableProxyFilterModel*)
@@ -1081,15 +1039,20 @@ Q_DECLARE_METATYPE(std::shared_ptr<PagedItemTableProxyFilterModel>)
 /// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
 class ItemTableProxyFilterModel : public QSortFilterProxyModel
 {
-    Q_OBJECT
+  Q_OBJECT
+
+  Q_PROPERTY(bool skipNotLoaded READ isSkippingNotLoaded WRITE setSkipNotLoaded NOTIFY skipNotLoadedChanged MEMBER m_skipNotLoaded)
 
 public:
-    enum class SortRole {
-      Start = Qt::UserRole + 1
-      , SourceRow
-      , Column
-      , Total
-    };
+  enum class SortRole {
+    Start = Qt::UserRole + 1
+    , SourceRow
+    , Column
+    , Total
+  };
+
+Q_SIGNALS:
+  void skipNotLoadedChanged(const bool& val);
 
 public slots:
   void slotSourceModelChanged(void);
@@ -1236,21 +1199,22 @@ Q_DECLARE_METATYPE(std::shared_ptr<PagedItemMapper>)
 /// \see doc.qt.io/qt-5/qtwidgets-itemviews-customsortfiltermodel-example.html
 class PagedItemListProxyFilterModel : public QAbstractProxyModel
 {
-    Q_OBJECT
+  Q_OBJECT
+
+  Q_PROPERTY(int pageSize READ getPageSize WRITE setPageSize NOTIFY pageSizeChanged MEMBER m_pageSize)
+  Q_PROPERTY(int forcePagesTotal READ getPagesTotal WRITE setPagesTotal NOTIFY pagesTotalChanged MEMBER m_forcePagesTotal)
+  Q_PROPERTY(ItemListModel* extraDataSource READ getExtraDataSource WRITE setExtraDataSource NOTIFY extraDataSourceChanged MEMBER m_extraDataSource)
+
+Q_SIGNALS:
+    void pageSizeChanged(const int& val);
+    void pagesTotalChanged(const int& val);
+    void extraDataSourceChanged(const ItemListModel* val);
 
 public:
   enum class Columns {
     Page = 0
-    //DebugIdentifier = 0
-    //, Page
     , Total
   };
-
-  /*enum class WorkMode {
-    Online = 0
-    , Offline
-    , Total
-  };*/
 
   explicit PagedItemListProxyFilterModel(QObject *pParent = nullptr) : QAbstractProxyModel(pParent) {
     connect(this, SIGNAL(sourceModelChanged()), this, SLOT(slotSourceModelChanged()));
@@ -1268,16 +1232,6 @@ public:
   int getPageSize() const {
     return m_pageSize;
   }
-
-  /*void setWorkMode(WorkMode mode) {
-    m_workMode = mode;
-
-    sourceReset();
-  }
-
-  WorkMode getWorkMode() const {
-    return m_workMode;
-  }*/
 
   void setPagesTotal(int val) {
     m_forcePagesTotal = val;
@@ -1383,7 +1337,7 @@ protected:
 
     QList<std::shared_ptr<ItemMapper>> items;
 
-    int pageStartCursor = 0;//index.row() * getPageSize();
+    int pageStartCursor = 0;
 
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
@@ -1464,7 +1418,7 @@ protected:
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
     if (!index.isValid()) {
-      return 0;
+      return Qt::ItemFlag::NoItemFlags;
     }
 
    Qt::ItemFlags res;
@@ -1476,18 +1430,6 @@ protected:
       res = sourceModel()->flags(mapToSource(index));
    }
    return res;
-  }
-
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
-    if (role != Qt::DisplayRole) {
-      return QVariant();
-    }
-
-    if (orientation == Qt::Horizontal) {
-      return QString("Column: %1").arg(section);
-    } else {
-      return QString("Row: %1").arg(section);
-    }
   }
 
 private:

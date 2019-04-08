@@ -21,6 +21,9 @@ void ItemTableProxyModel::sourceReset()
 
 void ItemTableProxyModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
+  Q_UNUSED(first);
+  Q_UNUSED(last);
+
   sourceReset();
 }
 
@@ -42,6 +45,8 @@ void ItemTableProxyModel::slotRowsInserted(const QModelIndex& parent, int start,
   /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
+  Q_UNUSED(start);
+  Q_UNUSED(end);
 
   sourceReset();
 }

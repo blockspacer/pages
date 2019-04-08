@@ -34,7 +34,7 @@ public:
 public slots:
     void setPersonsPage(const QVariant& val);
 
-signals:
+Q_SIGNALS:
     void personsPageChanged(const QVariant& val);
    // void PersonsPageModified(const QVariant& val);
 
