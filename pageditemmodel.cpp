@@ -67,6 +67,9 @@ void PagedItemTableProxyFilterModel::sourceReset()
 
 void PagedItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
+  Q_UNUSED(first);
+  Q_UNUSED(last);
+
   sourceReset();
 }
 
@@ -84,11 +87,12 @@ void PagedItemTableProxyFilterModel::slotRowsRemoved(const QModelIndex& parent, 
 
 void PagedItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent, int start, int end)
 {
-  qDebug() << "slotRowsInserted";
   /// \see HistoryTreeModel qt example
   /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
+  Q_UNUSED(start);
+  Q_UNUSED(end);
 
   sourceReset();
 }
@@ -114,6 +118,9 @@ void ItemTableProxyFilterModel::sourceReset()
 
 void ItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
+  Q_UNUSED(first);
+  Q_UNUSED(last);
+
   sourceReset();
 }
 
@@ -135,6 +142,8 @@ void ItemTableProxyFilterModel::slotRowsInserted(const QModelIndex& parent, int 
   /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
+  Q_UNUSED(start);
+  Q_UNUSED(end);
 
   sourceReset();
 }
@@ -160,6 +169,9 @@ void PagedItemListProxyFilterModel::sourceReset()
 
 void PagedItemListProxyFilterModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
+  Q_UNUSED(first);
+  Q_UNUSED(last);
+
   sourceReset();
 }
 
@@ -181,6 +193,8 @@ void PagedItemListProxyFilterModel::slotRowsInserted(const QModelIndex& parent, 
   /// doc-snapshots.qt.io/qt5-5.9/qtwebengine-webenginewidgets-demobrowser-history-cpp.html
   Q_UNUSED(parent); // Avoid warnings when compiling release
   Q_ASSERT(!parent.isValid());
+  Q_UNUSED(start);
+  Q_UNUSED(end);
 
   sourceReset();
 }

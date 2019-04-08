@@ -3,9 +3,13 @@
 #include "item_widget.h"
 #include "paged_item_widget.h"
 
+#ifdef QT_DEBUG
+
 #if defined(QT_TESTLIB_LIB) && QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
 #include <QAbstractItemModelTester>
 #endif
+
+#endif // QT_DEBUG
 
 enum class FilterMode {
   StaticString = 0
@@ -27,11 +31,10 @@ static bool isDisconnected = false;
 
 static bool enableAbstractItemModelTester = true;
 
+// TODO: support regex on remote side
 static FilterMode filterMode = FilterMode::StaticString;
 
-//static ItemListModel::Roles gFilterRole = ItemListModel::Roles::Name;
-
-static std::shared_ptr<fetchedPageData> m_lastFetchedData;
+//static std::shared_ptr<fetchedPageData> lastFetchedData;
 
 struct FilterSettings {
   QRegExp filterRegExp;
@@ -157,7 +160,7 @@ static std::shared_ptr<fetchedPageData> retrieveRemoteItems(int pageNum, int ite
 
   int cursorI = pageNum * itemsPerPage;
   if (cursorI >= filtered.size()) {
-    qDebug() << "not enough persons. Requested page " << pageNum;
+    qDebug() << "not enough persons on page " << pageNum;
   }
 
   const int pageItemsLastCursor = std::min(cursorI + itemsPerPage, filtered.size());
@@ -203,14 +206,9 @@ static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(bool forceClearC
   }
 
   const int pageStartCursor = result->requestedPageNum * result->requestedPageSize;
-  qDebug() << "pageStartCursor" << pageStartCursor;
-  qDebug() << "result->recievedItemsCount" << result->recievedItemsCount;
 
   // place dummy items if not enough items in cache
   const int remoteRowsTotal = pageStartCursor + result->recievedItemsCount;
-  qDebug() << "remoteRowsTotal" << remoteRowsTotal;
-
-  //model->setRowsTotalSpace(remoteRowsTotal);
 
   model->setRowsMinSpace(remoteRowsTotal);
 
@@ -411,20 +409,20 @@ m_ui(new Ui::MainWindow)
   m_pagedItemMapper->addMapping(m_pagedItemWidget, static_cast<int>(PagedItemListProxyFilterModel::Columns::Page), m_pagedItemWidget->personsPagePropertyName());
 
   connect(m_ui->prevButton, &QAbstractButton::clicked, [this]() {
-    const int prevPageIndex = std::max(0, lastMapperPageNum - 1);
+    const int prevPageIndex = std::max(0, m_lastMapperPageNum - 1);
 
     FilterSettings filterSettings;
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
     filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
-      m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, prevPageIndex, kItemsPerPage, filterSettings);
-      onDataFetched(prevPageIndex, m_lastFetchedData);
-      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+      std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, prevPageIndex, kItemsPerPage, filterSettings);
+      onDataFetched(prevPageIndex, lastFetchedData);
+      onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
     } else {
-      onDataFetched(prevPageIndex, m_lastFetchedData);
+      //lastFetchedData = nullptr;
+      onDataFetched(prevPageIndex, nullptr);
       onRowRangeChanged(prevPageIndex*kItemsPerPage, prevPageIndex*kItemsPerPage+kItemsPerPage);
-      m_lastFetchedData = nullptr;
     }
 
     // allows dynamic loading while using pagination
@@ -454,13 +452,13 @@ m_ui(new Ui::MainWindow)
     filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
-      m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, pageNum, kItemsPerPage, filterSettings);
-      onDataFetched(pageNum, m_lastFetchedData);
-      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+      std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, pageNum, kItemsPerPage, filterSettings);
+      onDataFetched(pageNum, lastFetchedData);
+      onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
     } else {
-      onDataFetched(pageNum, m_lastFetchedData);
+      //lastFetchedData = nullptr;
+      onDataFetched(pageNum, nullptr);
       onRowRangeChanged(pageNum*kItemsPerPage, pageNum*kItemsPerPage+kItemsPerPage);
-      m_lastFetchedData = nullptr;
     }
 
     // // Invalidates the current sorting and filtering.
@@ -475,8 +473,6 @@ m_ui(new Ui::MainWindow)
     Q_UNUSED(this);
 
     isDisconnected = state > 0 ? true : false;
-    qDebug() << "isDisconnected = " << isDisconnected;
-    //m_ui->refreshButton->setEnabled(!isDisconnected);
   });
 
   connect(m_ui->filterColComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int val) {
@@ -516,7 +512,7 @@ m_ui(new Ui::MainWindow)
     m_filterItemTableProxyModel->invalidate();
     m_pagedItemTableProxyModel->invalidate();
 
-    qDebug() << "skipNotLoadedCheckBox = " << state;
+    //qDebug() << "skipNotLoadedCheckBox = " << state;
     //m_ui->refreshButton->setEnabled(!isDisconnected);
   });
 
@@ -535,13 +531,13 @@ m_ui(new Ui::MainWindow)
     filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
-      m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, filterSettings);
-      onDataFetched(resetPageIndex, m_lastFetchedData);
-      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+      std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, filterSettings);
+      onDataFetched(resetPageIndex, lastFetchedData);
+      onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
 
     } else {
-      m_lastFetchedData = nullptr;
-      onDataFetched(resetPageIndex, m_lastFetchedData);
+      //lastFetchedData = nullptr;
+      onDataFetched(resetPageIndex, nullptr);
       onRowRangeChanged(resetPageIndex*kItemsPerPage, resetPageIndex*kItemsPerPage+kItemsPerPage);
     }
 
@@ -555,7 +551,7 @@ m_ui(new Ui::MainWindow)
 
   connect(m_ui->refreshButton, &QPushButton::clicked, [this]()
   {
-    int refreshPageIndex = lastMapperPageNum;
+    int refreshPageIndex = m_lastMapperPageNum;
     refreshPageIndex = std::max(refreshPageIndex, 0);
 
     m_ui->searchEdit->setText(m_ui->searchEdit->text());
@@ -570,9 +566,9 @@ m_ui(new Ui::MainWindow)
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
     filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
-    m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, refreshPageIndex, kItemsPerPage, filterSettings);
-    onDataFetched(refreshPageIndex, m_lastFetchedData);
-    onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+    std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, refreshPageIndex, kItemsPerPage, filterSettings);
+    onDataFetched(refreshPageIndex, lastFetchedData);
+    onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
 
     // Invalidates the current sorting and filtering.
     m_filterItemTableProxyModel->invalidate();
@@ -595,12 +591,12 @@ m_ui(new Ui::MainWindow)
     filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
-      m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, filterSettings);
-      onDataFetched(resetPageIndex, m_lastFetchedData);
-      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+      std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, filterSettings);
+      onDataFetched(resetPageIndex, lastFetchedData);
+      onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
     } else {
-      m_lastFetchedData = nullptr;
-      onDataFetched(resetPageIndex, m_lastFetchedData);
+      //lastFetchedData = nullptr;
+      onDataFetched(resetPageIndex, nullptr);
       onRowRangeChanged(resetPageIndex*kItemsPerPage, resetPageIndex*kItemsPerPage+kItemsPerPage);
     }
 
@@ -613,19 +609,19 @@ m_ui(new Ui::MainWindow)
   });
 
   connect(m_ui->nextButton, &QAbstractButton::clicked, [this]() {
-    const int nextPageIndex = std::max(0, lastMapperPageNum + 1);
+    const int nextPageIndex = std::max(0, m_lastMapperPageNum + 1);
 
     FilterSettings filterSettings;
     filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
     filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
-      m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, nextPageIndex, kItemsPerPage, filterSettings);
-      onDataFetched(nextPageIndex, m_lastFetchedData);
-      onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+      std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, nextPageIndex, kItemsPerPage, filterSettings);
+      onDataFetched(nextPageIndex, lastFetchedData);
+      onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
      } else {
-      m_lastFetchedData = nullptr;
-      onDataFetched(nextPageIndex, m_lastFetchedData);
+      //lastFetchedData = nullptr;
+      onDataFetched(nextPageIndex, nullptr);
       onRowRangeChanged(nextPageIndex*kItemsPerPage, nextPageIndex*kItemsPerPage+kItemsPerPage);
     }
 
@@ -707,13 +703,15 @@ m_ui(new Ui::MainWindow)
 
         const int requestPageNum = 3;
 
-        m_lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, requestPageNum, kItemsPerPage, filterSettings);
-        onDataFetched(m_lastFetchedData->requestedPageNum, m_lastFetchedData);
-        onRowRangeChanged(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize, m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+        std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, requestPageNum, kItemsPerPage, filterSettings);
+        onDataFetched(lastFetchedData->requestedPageNum, lastFetchedData);
+        onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
 
         m_pagedItemMapper->setCurrentIndex(requestPageNum);
     });
   }
+
+#ifdef QT_DEBUG
 
 #if defined(QT_TESTLIB_LIB) && QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
   if (enableAbstractItemModelTester) {
@@ -725,11 +723,14 @@ m_ui(new Ui::MainWindow)
   }
 #endif
 
+#endif // QT_DEBUG
+
+
 }
 
 void MainWindow::onRowRangeChanged(int first, int last) {
-  //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize);
-  //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(m_lastFetchedData->requestedPageNum*m_lastFetchedData->requestedPageSize+m_lastFetchedData->requestedPageSize);
+  //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize);
+  //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
   m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(first);
   m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(last);
 }
@@ -780,7 +781,7 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
 }
 
 void MainWindow::onMapperIndexChanged(int pageNum) {
-  lastMapperPageNum = pageNum;
+  m_lastMapperPageNum = pageNum;
 
   m_ui->pageNumSpinBox->setValue(pageNum);
 

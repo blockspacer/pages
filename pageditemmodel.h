@@ -79,6 +79,11 @@ public:
     , Total
   };
 
+  enum class Rows {
+    MainItem
+    , Total
+  };
+
   explicit ItemModel(QObject *pParent = nullptr) : QAbstractListModel(pParent) {
   }
 
@@ -96,7 +101,7 @@ public:
   void setName(const QString& sString) {
     m_item.setName(sString);
 
-    QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
+    QModelIndex indexItem = index(static_cast<int>(Rows::MainItem), static_cast<int>(Columns::Name));
     if(!indexItem.isValid()) {
       return;
     }
@@ -110,12 +115,20 @@ public:
   void setItemMode(const ItemMode& mode) {
     m_itemMode = mode;
 
-    // need to emit dataChanged with any column
-    QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
-    if(!indexItem.isValid()) {
+    /// \note need to emit dataChanged with any column
+    QModelIndex indexName = index(static_cast<int>(Rows::MainItem), static_cast<int>(Columns::Name));
+    if(!indexName.isValid()) {
       return;
     }
-    emit dataChanged(indexItem, indexItem);
+
+    emit dataChanged(indexName, indexName);
+
+    QModelIndex indexMode = index(static_cast<int>(Rows::MainItem), static_cast<int>(Columns::ItemMode));
+    if(!indexMode.isValid()) {
+      return;
+    }
+
+    emit dataChanged(indexMode, indexMode);
   }
 
   QString getSurname() const {
@@ -125,7 +138,7 @@ public:
   void setSurname(const QString& sString) {
     m_item.setSurname(sString);
 
-    QModelIndex indexItem = index(0, static_cast<int>(Columns::Surname));
+    QModelIndex indexItem = index(static_cast<int>(Rows::MainItem), static_cast<int>(Columns::Surname));
     if(!indexItem.isValid()) {
       return;
     }
@@ -142,7 +155,7 @@ public:
 
     emit guidChanged(prevGUID, m_item.getGUID());
 
-    QModelIndex indexItem = index(0, static_cast<int>(Columns::GUID));
+    QModelIndex indexItem = index(static_cast<int>(Rows::MainItem), static_cast<int>(Columns::GUID));
     if(!indexItem.isValid()) {
       return;
     }
@@ -220,8 +233,8 @@ public:
     Q_UNUSED(parent);
     Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
-    /// \note modelholds 1 item
-    return 1;
+    /// \note model always holds 1 item
+    return static_cast<int>(Rows::Total);
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
@@ -345,7 +358,7 @@ public:
     QVector<int> roles;
     roles << role;
     if (!replaceItemAt(index.row(), itemMapper, roles)) { // emits changed signal
-      qDebug() << "ItemListModel::setData: invalid index.row() " << index.row();
+      qCritical() << "ItemListModel::setData: invalid index.row() " << index.row();
     }
 
     return true;
@@ -366,7 +379,7 @@ public:
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
     if (!index.isValid()) {
-      return 0;
+      return Qt::ItemFlag::NoItemFlags;
     }
 
     return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
@@ -395,7 +408,6 @@ public:
     case Qt::SizeHintRole:
       return QVariant(QSize( 25, 25 ));
     case Qt::ToolTipRole:
-    //case Qt::DisplayRole:
     case Qt::DecorationRole:
     case Qt::InitialSortOrderRole:
       return model->itemAsString();
@@ -405,12 +417,13 @@ public:
       break;
     }
 
+    /// \note return some string for unnecessary roles
     if (role != Qt::DisplayRole && role != Qt::EditRole) {
-        return QStringLiteral("%1").arg( model->getGUID() ); // disable tooltips, icons, e.t.c
+        return QStringLiteral("%1").arg( model->itemAsString() ); // disable tooltips, icons, e.t.c
     }
 
     if (index.column() == static_cast<int>(Columns::DebugIdentifier)) {
-      return QStringLiteral("%1").arg( model->getGUID() ); // disable tooltips, icons, e.t.c
+      return QStringLiteral("%1").arg( model->itemAsString() ); // disable tooltips, icons, e.t.c
     }
 
     QVariant result;
@@ -421,7 +434,10 @@ public:
   }
 
   void pushBack(std::shared_ptr<ItemMapper> item) {
-    const int oldRows = itemsTotal();
+    const int oldRows = itemsTotal() - 1;
+
+     /// \note we incremented position for inserted item for your`s attention here
+    const int itemRowId = oldRows + 1;
 
     /*
         First is the new index of the first element that will be inserted.
@@ -430,7 +446,7 @@ public:
         index of the first and last elements is the same, and is equal to
         the current size of the list.
     */
-    const int first = oldRows;
+    const int first = itemRowId;
     const int last = first;
     emit beginInsertRows(QModelIndex(), first, last);
 
@@ -443,7 +459,6 @@ public:
 
     emit endInsertRows();
 
-    const int itemRowId = oldRows + 1;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
     if(!indexMapped.isValid()) {
       return;
@@ -454,9 +469,7 @@ public:
         Q_UNUSED(first);
         Q_UNUSED(last);
 
-        //sourceReset();
-
-        emit dataChanged(indexMapped, indexMapped); // TODO
+        emit dataChanged(indexMapped, indexMapped);
       });
     }
   }
@@ -467,17 +480,14 @@ public:
       return false;
     }
 
+#ifdef Q_DEBUG
     const int beforeCount = itemsTotal();
-
-    //qDebug() << "m_items.size() before" << beforeCount;
+#endif // Q_DEBUG
 
     emit beginRemoveRows(QModelIndex(), rowIndex, rowIndex);
 
     std::shared_ptr<ItemMapper> prevItem = getItemAt(rowIndex);
     if (prevItem.get()) {
-      //int oldGuid = static_cast<ItemModel*>(prevItem->model())->getGUID();
-      //m_guidToItem.remove(oldGuid);
-
       m_items.removeAt(rowIndex);
     } else {
       qCritical() << "Invalid item at row " << rowIndex;
@@ -486,13 +496,13 @@ public:
 
     emit endRemoveRows();
 
+#ifdef Q_DEBUG
     const int afterCount = itemsTotal();
-
-    //qDebug() << "m_items.size() after" << m_items.size();
 
     Q_ASSERT(m_items.size() != beforeCount);
     Q_ASSERT(m_items.size() == afterCount);
     Q_ASSERT(beforeCount == (afterCount + 1));
+#endif // Q_DEBUG
 
     return true;
   }
@@ -548,7 +558,9 @@ public:
       return false;
     }
 
+#ifdef Q_DEBUG
     const int oldRowCount = itemsTotal();
+#endif // Q_DEBUG
 
     /*
         First is the new index of the first element that will be inserted.
@@ -560,11 +572,7 @@ public:
     const int first = rowIndex;
     const int last = first;
 
-    //emit beginRemoveRows(QModelIndex(), first, last);
-    //m_items.removeAt(rowIndex);
-    //emit endRemoveRows();
-
-    removeItemAt(rowIndex);
+    removeItemAt(rowIndex); // emits remove rows signal
 
     emit beginInsertRows(QModelIndex(), first, last);
 
@@ -580,9 +588,14 @@ public:
     //m_items.replace(rowIndex, newItem);
     m_items.insert(rowIndex, newItem);
 
-    ItemModel* m1 = static_cast<ItemModel*>(m_items.at(rowIndex)->model());
-    ItemModel* m2 = static_cast<ItemModel*>(newItem->model());
-    Q_ASSERT(m1->getGUID() == m2->getGUID() );
+#ifdef QT_DEBUG
+    // check that inserted item equals to item passed to function
+    {
+      ItemModel* m1 = static_cast<ItemModel*>(m_items.at(rowIndex)->model());
+      ItemModel* m2 = static_cast<ItemModel*>(newItem->model());
+      Q_ASSERT(m1->itemAsString() == m2->itemAsString() );
+    }
+#endif // QT_DEBUG
 
     /*{
       ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
@@ -602,17 +615,17 @@ public:
 
     emit dataChanged(indexMapped, indexMapped);
 
+#ifdef Q_DEBUG
     const int newRowCount = itemsTotal();
     Q_ASSERT(oldRowCount == newRowCount);
+#endif // Q_DEBUG
 
     if (newItem) {
       connect(newItem->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last){
         Q_UNUSED(first);
         Q_UNUSED(last);
 
-        //sourceReset();
-
-        emit dataChanged(indexMapped, indexMapped); // TODO
+        emit dataChanged(indexMapped, indexMapped);
       });
     }
 
@@ -626,26 +639,6 @@ public:
   int itemsTotal() const {
     return m_items.size();
   }
-
-#ifdef nope
-  void setItems(const QList<std::shared_ptr<ItemMapper>>& items) {
-    removeAllItems(); // emit row remove signal
-
-    emit beginInsertRows(QModelIndex(), items.size(), items.size());
-
-    m_items = items;
-
-    /*for (auto& newItem: items) {
-      ItemModel* itemModel = static_cast<ItemModel*>(newItem->model());
-      if(itemModel) {
-        int newGuid = itemModel->getGUID();
-        m_guidToItem[newGuid] = newItem;
-      }
-    }*/
-
-    emit endInsertRows();
-  }
-#endif
 
   const std::shared_ptr<ItemMapper> getItemAt(int rowIndex) const {
     if(rowIndex < 0 || rowIndex >= itemsTotal()) {
@@ -667,23 +660,14 @@ public:
   }*/
 
   void removeAllItems() {
-    qDebug() << "removeAllItems itemsTotal()" << itemsTotal();
-
-    const int staringItemsTotal = itemsTotal();
-    for( int i = 0; i < staringItemsTotal; i++) {
-      qDebug() << "removeAllItems removeItemAt" << i;
-      removeItemAt(staringItemsTotal - i - 1);
-      Q_ASSERT((staringItemsTotal - i - 1) >= 0);
-    }
-
-    /*emit beginRemoveRows(QModelIndex(), 0, itemsTotal());
+    emit beginRemoveRows(QModelIndex(), 0, itemsTotal() - 1);
 
     m_items.clear();
     //m_guidToItem.clear();
 
     emit endRemoveRows();
 
-    Q_ASSERT(itemsTotal() == 0);*/
+    Q_ASSERT(itemsTotal() == 0);
   }
 
   // Returns the parent of the model index, or QModelIndex() if it has no parent.
@@ -758,14 +742,12 @@ protected:
       Q_ASSERT(false); // force DEBUG crash here
       return 0;
     }
-    //qDebug() << "rowCount source->getItems().size()" << source->getItems().size();
     return source->getItems().size();
   }
 
   int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
     Q_UNUSED(parent);
 
-    //qDebug() << "columnCount static_cast<int>(ItemTableProxyModel::Columns::Total)" << static_cast<int>(ItemTableProxyModel::Columns::Total);
     return static_cast<int>(ItemTableProxyModel::Columns::Total);
   }
 
@@ -836,7 +818,6 @@ protected:
     case Qt::SizeHintRole:
       return QVariant(QSize( 25, 25 ));
     case Qt::ToolTipRole:
-    //case Qt::DisplayRole:
     case Qt::DecorationRole:
     case Qt::InitialSortOrderRole:
       return model->itemAsString();
@@ -911,19 +892,6 @@ protected:
       return res;
     }
 
-    Q_ASSERT(proxyIndex.column() >=0 && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1));
-
-    /*switch(proxyIndex.column())
-    {
-      case static_cast<int>(ItemListModel::Columns::Item):
-        //res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
-        res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
-        break;
-      default:
-        res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
-        break;
-    }*/
-
     if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
     {
        res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
@@ -936,7 +904,6 @@ protected:
 
   QModelIndex mapFromSource(const QModelIndex &sourceIndex) const Q_DECL_OVERRIDE {
     QModelIndex res;
-    //res = index(sourceIndex.row(), static_cast<int>(ItemListModel::Columns::Item));
     res = index(sourceIndex.row(), sourceIndex.column());
     return res;
   }
@@ -944,7 +911,7 @@ protected:
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
     if (!index.isValid()) {
-      return 0;
+      return Qt::ItemFlag::NoItemFlags;
     }
 
    Qt::ItemFlags res;
@@ -1021,12 +988,7 @@ public:
       Q_UNUSED(parent);
       Q_ASSERT(checkIndex(parent, QAbstractItemModel::CheckIndexOption::ParentIsInvalid)); // flat model
 
-      auto filteredRows = QSortFilterProxyModel::rowCount();
-      //qDebug() << "filteredRows1" << filteredRows;
-
-      //qDebug() << "filteredRows2" << filteredRows;
-
-      return filteredRows;
+      return QSortFilterProxyModel::rowCount();
     }
 
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
@@ -1046,7 +1008,7 @@ protected:
           return false;
         }
         const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(itemModeData.toInt());
-        //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
+
         const bool isNotLoaded = itemMode == ItemModel::ItemMode::NotLoaded;
 
         const bool isInRange = rowInRange(sourceRow);
@@ -1175,14 +1137,10 @@ protected:
         }
 
         const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
-        //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
+
         const bool isNotLoaded = itemMode == ItemModel::ItemMode::NotLoaded;
 
         const QString& filterPattern = regexp.pattern();
-
-        /*if(!isNotLoaded && filterPattern.isEmpty()) {
-          return true;
-        }*/
 
         bool anyFieldMatch = true;
         if(!filterPattern.isEmpty()) {
@@ -1203,16 +1161,6 @@ protected:
 
           anyFieldMatch = isColumnFiltered;
         }
-
-        /*const QModelIndex& indexSurname = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Surname), sourceParent);
-        const bool isSurnameFiltered = sourceModel()->data(indexSurname).toString().contains(regexp);
-
-        const QModelIndex& indexGuid = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::GUID), sourceParent);
-        const bool isGuidFiltered = sourceModel()->data(indexGuid).toString().contains(regexp);
-*/
-        //bool isGuidValid = sourceModel()->data(indexGuid).toInt() != ItemListModel::dummyItemId;
-
-        //return !isNotLoaded && anyFieldMatch;
 
         bool needSkip = isNotLoaded || anyFieldMatch;
 
@@ -1314,8 +1262,7 @@ public:
   void setPageSize(int pageSize) {
     m_pageSize = pageSize;
 
-      /*beginInsertRows(QModelIndex(), 0, 0);
-      endInsertRows();*/
+    sourceReset();
   }
 
   int getPageSize() const {
@@ -1324,6 +1271,8 @@ public:
 
   /*void setWorkMode(WorkMode mode) {
     m_workMode = mode;
+
+    sourceReset();
   }
 
   WorkMode getWorkMode() const {
@@ -1331,14 +1280,13 @@ public:
   }*/
 
   void setPagesTotal(int val) {
-    m_onlinePagesTotal = val;
+    m_forcePagesTotal = val;
 
-      /*beginInsertRows(QModelIndex(), 0, 0);
-      endInsertRows();*/
+    sourceReset();
   }
 
   int getPagesTotal() const {
-    return m_onlinePagesTotal;
+    return m_forcePagesTotal;
   }
 
   ItemListModel* getExtraDataSource() const {
@@ -1370,27 +1318,6 @@ protected:
       return getPagesTotal();
     }
 
-    //return QAbstractProxyModel::rowCount(parent);
-
-    /// \note always set extra data source
-    ItemListModel* itemListModel = getExtraDataSource();
-    if (!itemListModel) {
-      Q_ASSERT(false); // force DEBUG crash here
-      return 1;
-    }
-
-    /// \note possible unreachable code
-    //Q_ASSERT(false); // force DEBUG crash here
-
-    //return itemListModel->rowCount();
-
-    /// \note need to show something to user, so we will add empty page if no pages recieved
-    //return std::max(getPagesTotal(), 1);
-
-    /*if (m_workMode == WorkMode::Online && getOnlinePagesTotal() > 0) {
-      return getOnlinePagesTotal();
-    }*/
-
     int pagesTotal = 0;
     if (getPageSize() != 0) {
       std::div_t res = std::div(sourceModel()->rowCount(), getPageSize());
@@ -1398,7 +1325,6 @@ protected:
       pagesTotal = res.rem ? (res.quot + 1) : res.quot;
     }
 
-    /// \note possible unreachable code
     return pagesTotal;
   }
 
@@ -1432,7 +1358,6 @@ protected:
     case Qt::SizeHintRole:
       return QVariant(QSize( 25, 25 ));
     case Qt::ToolTipRole:
-    //case Qt::DisplayRole:
     case Qt::DecorationRole:
     case Qt::InitialSortOrderRole:
     case Qt::CheckStateRole:
@@ -1448,6 +1373,10 @@ protected:
     PagedItemTableProxyFilterModel* pagedItemTableProxyFilterModel = static_cast<PagedItemTableProxyFilterModel*>(sourceModel());
 
     ItemListModel* itemListModel = getExtraDataSource();
+
+    /// \note always set extra data source
+    Q_ASSERT(itemListModel != nullptr);
+
     if (!itemListModel) {
       return result;
     }
@@ -1457,7 +1386,6 @@ protected:
     int pageStartCursor = 0;//index.row() * getPageSize();
 
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
-      //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
       if(!idx.isValid()) {
         continue;
@@ -1476,19 +1404,6 @@ protected:
         continue;
       }
       items.push_back(item);
-
-      /*int dataGUID = data.value<QVariant>().toInt();
-      std::shared_ptr<ItemMapper> item = itemListModel->getItemById(dataGUID);
-      if (!item) {
-        continue;
-      }
-      items.push_back(item);*/
-
-      /*std::shared_ptr<ItemMapper> item = itemListModel->getItemAt(index.row() * getPageSize() + i);
-      if (!item) {
-        continue;
-      }
-      items.push_back(item);*/
     }
 
     result = QVariant::fromValue(items);
@@ -1537,15 +1452,6 @@ protected:
 
     res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
 
-    /*Q_ASSERT(proxyIndex.column() >=0 && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1));
-
-    if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
-    {
-       res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
-    } else {
-       res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
-    }*/
-
     return res;
   }
 
@@ -1554,12 +1460,6 @@ protected:
     res = index(sourceIndex.row(), sourceIndex.column());
     return res;
   }
-
-  /*bool canFetchMore(const QModelIndex & index) const Q_DECL_OVERRIDE
-  {
-    Q_UNUSED(index);
-    return false;
-  }*/
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
@@ -1591,9 +1491,19 @@ protected:
   }
 
 private:
-  int m_pageSize = 1;
-  int m_onlinePagesTotal = -1;
 
+  /// \brief used to calculate total page count
+  /// based on number of items per page
+  /// \note used only if not set m_forcePagesTotal
+  int m_pageSize = 1;
+
+  /// \brief allows to force set row count
+  /// \note usefull if you have not loaded remote pages,
+  /// but want them to be seen in pagination
+  int m_forcePagesTotal = -1;
+
+  /// \brief we will get items from extra data source
+  /// \note sourceModel used to calculate total page count
   ItemListModel* m_extraDataSource;
 };
 

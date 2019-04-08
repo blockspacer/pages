@@ -44,7 +44,6 @@ const QByteArray PagedItemWidget::personsPagePropertyName() const {
 
 void PagedItemWidget::setPersonsPage(const QVariant &val)
 {
-  qDebug() << "setPersonsPage" << val;
   m_PersonsPage = val;
 
   clearContents();
