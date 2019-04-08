@@ -47,28 +47,30 @@ private:
   std::shared_ptr<ItemListModel> m_itemListModelCache;
 
   /// \brief converts flat item list to multi-column table model
-  ItemTableProxyModel* m_itemTableProxyModel;
+  /// Used for easier filtering, sorting, e.t.c.
+  ItemTableProxyModel* m_TableProxyModel;
 
   /// \brief provides filtering (search)
-  ItemTableProxyFilterModel* m_filterItemTableProxyModel;
+  ItemTableProxyFilterModel* m_filterTableProxyModel;
 
   /// \brief provides pagination in model
   /// \note pagination built via passed start/end range
-  PagedItemTableProxyFilterModel* m_pagedItemTableProxyModel;
+  PagedItemTableProxyFilterModel* m_pagedTableProxyModel;
 
   /// \brief converts multi-column table model to flat item list
-  /// \note item list will be limited to items on curent page
+  /// \note item list will be limited to items on current page
   /// \note gets items from passed extraDataSource
-  PagedItemListProxyFilterModel* m_pagedItemListProxyFilterModel;
+  /// \note also can filter some data if necessary
+  PagedItemListProxyFilterModel* m_pagedListProxyFilterModel;
 
   /// \brief provides pagination used in mapped widgets
   /// \note passes item list to widgets on page switch
-  std::shared_ptr<PagedItemMapper> m_pagedItemMapper;
+  std::shared_ptr<PagedItemMapper> m_paginationMapper;
 
   /// \note recieves item list from mapper on every page switch
-  PagedItemWidget* m_pagedItemWidget;
+  PagedItemWidget* m_pagedItemListWidget;
 
-  QTimer* m_timer;
+  QTimer* m_fetchDelayTimer;
 
   Ui::MainWindow *m_ui;
 

@@ -98,22 +98,12 @@ static std::shared_ptr<ItemMapper> createItemMapper(ItemModel* itemModel) {
   return itemWidget;
 }*/
 
-static QList<Item> retrieveRemoteFiltered(const FilterSettings& filter/*, const ItemListModel::Roles& filterRole*/) {
+static QList<Item> retrieveRemoteFiltered(const FilterSettings& filter) {
   QList<Item> result;
   for (int i = 0; i < dummyRemoteItems.size(); i++) {
     // TODO: regex support
     const auto& item = dummyRemoteItems.at(i);
     QString filterItem = "";
-
-    /*if (filterRole == ItemListModel::Roles::Name) {
-      filterItem = item.name;
-      //qDebug() << "PersonsModel::Roles::NameRole";
-    } else if (filterRole == ItemListModel::Roles::Surname) {
-      filterItem = item.surname;
-      //qDebug() << "PersonsModel::Roles::SurnameRole";
-    } else {
-      // TODO
-    }*/
 
     switch (filterColumn) {
       case static_cast<int>(ItemModel::Columns::Name): {
@@ -134,20 +124,16 @@ static QList<Item> retrieveRemoteFiltered(const FilterSettings& filter/*, const 
     // Returns the position of the first match, or -1 if there was no match.
     const bool isFiltered = filter.filterRegExp.pattern().isEmpty() || filter.filterRegExp.indexIn(filterItem) != -1;
 
-    // !filter.filterRegExp.pattern().isEmpty() && !filterItem.contains(filter.filterRegExp.pattern(), filter.filterCaseSensitivity)
-
     if (!isFiltered) {
-      //qDebug() << "skipped " << filterItem;
       continue;
-    } else {
-      //qDebug() << "NOT skipped " << filterItem;
     }
+
     result.push_back(item);
   }
   return result;
 }
 
-static std::shared_ptr<fetchedPageData> retrieveRemoteItems(int pageNum, int itemsPerPage, const FilterSettings& filter/*, const ItemListModel::Roles& filterRole*/) {
+static std::shared_ptr<fetchedPageData> retrieveRemoteItems(int pageNum, int itemsPerPage, const FilterSettings& filter) {
   if (pageNum < 0) {
     return nullptr;
   }
@@ -156,7 +142,7 @@ static std::shared_ptr<fetchedPageData> retrieveRemoteItems(int pageNum, int ite
 
   QList<Item> dummyRemotePage;
 
-  auto filtered = retrieveRemoteFiltered(filter/*, filterRole*/);
+  auto filtered = retrieveRemoteFiltered(filter);
 
   int cursorI = pageNum * itemsPerPage;
   if (cursorI >= filtered.size()) {
@@ -188,13 +174,13 @@ static std::shared_ptr<fetchedPageData> retrieveRemoteItems(int pageNum, int ite
   return result;
 }
 
-static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(bool forceClearCache, std::shared_ptr<ItemListModel> model, int pageNum, int itemsPerPage, const FilterSettings& filter/*, const ItemListModel::Roles& filterRole*/)
+static std::shared_ptr<fetchedPageData> fetchRemoteItemsToModel(bool forceClearCache, std::shared_ptr<ItemListModel> model, int pageNum, int itemsPerPage, const FilterSettings& filter)
 {
   if (pageNum < 0) {
     return nullptr;
   }
 
-  std::shared_ptr<fetchedPageData> result = retrieveRemoteItems(pageNum, itemsPerPage, filter/*, filterRole*/);
+  std::shared_ptr<fetchedPageData> result = retrieveRemoteItems(pageNum, itemsPerPage, filter);
 
   if (forceClearCache || result->recievedItemsCount == 0) {
     model->removeAllItems();
@@ -239,28 +225,28 @@ m_ui(new Ui::MainWindow)
 {
   m_ui->setupUi(this);
 
-  m_pagedItemMapper = std::make_shared<PagedItemMapper>();
+  m_paginationMapper = std::make_shared<PagedItemMapper>();
 
-  m_filterItemTableProxyModel = new ItemTableProxyFilterModel();
-
-  // dynamicSortFilter ensures that the model is sorted and filtered whenever
-  // the contents of the source model change.
-  m_filterItemTableProxyModel->setDynamicSortFilter(true);
-  m_filterItemTableProxyModel->setFilterKeyColumn(filterColumn);
-
-  m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
+  m_filterTableProxyModel = new ItemTableProxyFilterModel();
 
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
-  m_pagedItemTableProxyModel->setDynamicSortFilter(true);
+  m_filterTableProxyModel->setDynamicSortFilter(true);
+  m_filterTableProxyModel->setFilterKeyColumn(filterColumn);
 
-  m_pagedItemListProxyFilterModel = new PagedItemListProxyFilterModel();
+  m_pagedTableProxyModel = new PagedItemTableProxyFilterModel();
 
-  m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage); // limit items on widget page
+  // dynamicSortFilter ensures that the model is sorted and filtered whenever
+  // the contents of the source model change.
+  m_pagedTableProxyModel->setDynamicSortFilter(true);
 
-  m_itemTableProxyModel = new ItemTableProxyModel();
+  m_pagedListProxyFilterModel = new PagedItemListProxyFilterModel();
+
+  m_pagedListProxyFilterModel->setPageSize(kItemsPerPage); // limit items on widget page
+
+  m_TableProxyModel = new ItemTableProxyModel();
   m_itemListModelCache = std::make_shared<ItemListModel>();
-  m_itemTableProxyModel->setSourceModel(m_itemListModelCache.get());
+  m_TableProxyModel->setSourceModel(m_itemListModelCache.get());
 
   m_ui->prevButton->setEnabled(false);
   m_ui->nextButton->setEnabled(false);
@@ -400,20 +386,20 @@ m_ui(new Ui::MainWindow)
     m_itemListModelCache->pushBack(m_itemMapper);
   }
 
-  m_pagedItemMapper->setModel(m_pagedItemListProxyFilterModel);
-  m_pagedItemMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
+  m_paginationMapper->setModel(m_pagedListProxyFilterModel);
+  m_paginationMapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
 
-  m_pagedItemWidget = new PagedItemWidget;
-  m_ui->scrollVerticalLayout->addWidget(m_pagedItemWidget);
+  m_pagedItemListWidget = new PagedItemWidget;
+  m_ui->scrollVerticalLayout->addWidget(m_pagedItemListWidget);
 
-  m_pagedItemMapper->addMapping(m_pagedItemWidget, static_cast<int>(PagedItemListProxyFilterModel::Columns::Page), m_pagedItemWidget->personsPagePropertyName());
+  m_paginationMapper->addMapping(m_pagedItemListWidget, static_cast<int>(PagedItemListProxyFilterModel::Columns::Page), m_pagedItemListWidget->personsPagePropertyName());
 
   connect(m_ui->prevButton, &QAbstractButton::clicked, [this]() {
     const int prevPageIndex = std::max(0, m_lastMapperPageNum - 1);
 
     FilterSettings filterSettings;
-    filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-    filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+    filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+    filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
       std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, prevPageIndex, kItemsPerPage, filterSettings);
@@ -426,7 +412,7 @@ m_ui(new Ui::MainWindow)
     }
 
     // allows dynamic loading while using pagination
-    m_pagedItemMapper->setCurrentIndex(prevPageIndex);
+    m_paginationMapper->setCurrentIndex(prevPageIndex);
   });
 
   connect(m_ui->pageSizeSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int state) {
@@ -442,14 +428,14 @@ m_ui(new Ui::MainWindow)
     m_ui->searchEdit->setText(m_ui->searchEdit->text());
 
     if (filterMode == FilterMode::StaticString) {
-      m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+      m_filterTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
     } else if (filterMode == FilterMode::RegEx) {
-      m_filterItemTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
+      m_filterTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
     }
 
     FilterSettings filterSettings;
-    filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-    filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+    filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+    filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
       std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, pageNum, kItemsPerPage, filterSettings);
@@ -462,11 +448,11 @@ m_ui(new Ui::MainWindow)
     }
 
     // // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
 
     // allows dynamic loading while using pagination
-    m_pagedItemMapper->setCurrentIndex(pageNum);
+    m_paginationMapper->setCurrentIndex(pageNum);
   });
 
   connect(m_ui->checkBox, &QCheckBox::stateChanged, [this](int state) {
@@ -482,11 +468,11 @@ m_ui(new Ui::MainWindow)
 
     filterColumn = val;
 
-    m_filterItemTableProxyModel->setFilterKeyColumn(filterColumn);
+    m_filterTableProxyModel->setFilterKeyColumn(filterColumn);
 
     // // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
   });
 
   connect(m_ui->sortColComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int val) {
@@ -499,18 +485,18 @@ m_ui(new Ui::MainWindow)
     m_ui->tableView_2->sortByColumn(sortColumn, Qt::AscendingOrder);
 
     // // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
   });
 
   connect(m_ui->skipNotLoadedCheckBox, &QCheckBox::stateChanged, [this](int state) {
     Q_UNUSED(this);
 
-    m_filterItemTableProxyModel->setSkipNotLoaded(state > 0);
+    m_filterTableProxyModel->setSkipNotLoaded(state > 0);
 
     // // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
 
     //qDebug() << "skipNotLoadedCheckBox = " << state;
     //m_ui->refreshButton->setEnabled(!isDisconnected);
@@ -521,14 +507,14 @@ m_ui(new Ui::MainWindow)
     const int resetPageIndex = 0;
 
     if (filterMode == FilterMode::StaticString) {
-      m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+      m_filterTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
     } else if (filterMode == FilterMode::RegEx) {
-      m_filterItemTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
+      m_filterTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
     }
 
     FilterSettings filterSettings;
-    filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-    filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+    filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+    filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
       std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, filterSettings);
@@ -542,11 +528,11 @@ m_ui(new Ui::MainWindow)
     }
 
     // // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
 
     // allows dynamic loading while using pagination
-    m_pagedItemMapper->setCurrentIndex(resetPageIndex);
+    m_paginationMapper->setCurrentIndex(resetPageIndex);
   });
 
   connect(m_ui->refreshButton, &QPushButton::clicked, [this]()
@@ -557,25 +543,25 @@ m_ui(new Ui::MainWindow)
     m_ui->searchEdit->setText(m_ui->searchEdit->text());
 
     if (filterMode == FilterMode::StaticString) {
-      m_filterItemTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
+      m_filterTableProxyModel->setFilterFixedString(m_ui->searchEdit->text());
     } else if (filterMode == FilterMode::RegEx) {
-      m_filterItemTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
+      m_filterTableProxyModel->setFilterRegExp(m_ui->searchEdit->text());
     }
 
     FilterSettings filterSettings;
-    filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-    filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+    filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+    filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
     std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, refreshPageIndex, kItemsPerPage, filterSettings);
     onDataFetched(refreshPageIndex, lastFetchedData);
     onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
 
     // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
 
      // allows dynamic loading while using pagination
-     m_pagedItemMapper->setCurrentIndex(refreshPageIndex);
+     m_paginationMapper->setCurrentIndex(refreshPageIndex);
   });
 
   connect(m_ui->resetButton, &QPushButton::clicked, [this]()
@@ -583,12 +569,12 @@ m_ui(new Ui::MainWindow)
     const int resetPageIndex = 0;
 
     m_ui->searchEdit->setText("");
-    m_filterItemTableProxyModel->setFilterFixedString("");
+    m_filterTableProxyModel->setFilterFixedString("");
     //m_filterItemTableProxyModel->setFilterRegExp("");
 
     FilterSettings filterSettings;
-    filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-    filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+    filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+    filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
       std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, resetPageIndex, kItemsPerPage, filterSettings);
@@ -601,19 +587,19 @@ m_ui(new Ui::MainWindow)
     }
 
     // // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
 
     // allows dynamic loading while using pagination
-    m_pagedItemMapper->setCurrentIndex(resetPageIndex);
+    m_paginationMapper->setCurrentIndex(resetPageIndex);
   });
 
   connect(m_ui->nextButton, &QAbstractButton::clicked, [this]() {
     const int nextPageIndex = std::max(0, m_lastMapperPageNum + 1);
 
     FilterSettings filterSettings;
-    filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-    filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+    filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+    filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
     if (!isDisconnected) {
       std::shared_ptr<fetchedPageData> lastFetchedData = fetchRemoteItemsToModel(m_ui->clearCacheOnPagingCheckBox->isChecked(), m_itemListModelCache, nextPageIndex, kItemsPerPage, filterSettings);
@@ -626,39 +612,39 @@ m_ui(new Ui::MainWindow)
     }
 
     // allows dynamic loading while using pagination
-    m_pagedItemMapper->setCurrentIndex(nextPageIndex);
+    m_paginationMapper->setCurrentIndex(nextPageIndex);
   });
 
-  connect(m_pagedItemMapper.get(), &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
+  connect(m_paginationMapper.get(), &PagedItemMapper::currentIndexChanged, this, &MainWindow::onMapperIndexChanged);
 
-  m_filterItemTableProxyModel->setSourceModel(m_itemTableProxyModel);
-
-  // dynamicSortFilter ensures that the model is sorted and filtered whenever
-  // the contents of the source model change.
-  m_filterItemTableProxyModel->setDynamicSortFilter(false);
-
-  m_filterItemTableProxyModel->setSortRole(sortRoleItemTableProxyFilterModel);
-  m_filterItemTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
-  m_filterItemTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-  // Invalidates the current sorting and filtering.
-  m_filterItemTableProxyModel->invalidate();
-
-  m_pagedItemTableProxyModel->setSourceModel(m_filterItemTableProxyModel);
+  m_filterTableProxyModel->setSourceModel(m_TableProxyModel);
 
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
-  m_pagedItemTableProxyModel->setDynamicSortFilter(false);
+  m_filterTableProxyModel->setDynamicSortFilter(false);
 
-  m_filterItemTableProxyModel->setSortRole(sortRolePagedItemTableProxyFilterModel);
-  m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(0);
-  m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
+  m_filterTableProxyModel->setSortRole(sortRoleItemTableProxyFilterModel);
+  m_filterTableProxyModel->setSortCaseSensitivity (Qt::CaseInsensitive);
+  m_filterTableProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
   // Invalidates the current sorting and filtering.
-  m_pagedItemTableProxyModel->invalidate();
+  m_filterTableProxyModel->invalidate();
 
-  m_pagedItemListProxyFilterModel->setSourceModel(m_pagedItemTableProxyModel);//m_filterItemTableProxyModel);
-  m_pagedItemListProxyFilterModel->setExtraDataSource(m_itemListModelCache.get());
+  m_pagedTableProxyModel->setSourceModel(m_filterTableProxyModel);
 
-  m_ui->tableView->setModel(m_pagedItemTableProxyModel);
+  // dynamicSortFilter ensures that the model is sorted and filtered whenever
+  // the contents of the source model change.
+  m_pagedTableProxyModel->setDynamicSortFilter(false);
+
+  m_filterTableProxyModel->setSortRole(sortRolePagedItemTableProxyFilterModel);
+  m_pagedTableProxyModel->setFilterMinSourceRowIndex(0);
+  m_pagedTableProxyModel->setFilterMaxSourceRowIndex(kItemsPerPage);
+  // Invalidates the current sorting and filtering.
+  m_pagedTableProxyModel->invalidate();
+
+  m_pagedListProxyFilterModel->setSourceModel(m_pagedTableProxyModel);//m_filterItemTableProxyModel);
+  m_pagedListProxyFilterModel->setExtraDataSource(m_itemListModelCache.get());
+
+  m_ui->tableView->setModel(m_pagedTableProxyModel);
   m_ui->tableView->setAlternatingRowColors(true);
   m_ui->tableView->setSortingEnabled(true);
   m_ui->tableView->sortByColumn(sortColumn, Qt::AscendingOrder);
@@ -667,7 +653,7 @@ m_ui(new Ui::MainWindow)
   m_ui->tableView->update();
   m_ui->tableView->show();
 
-  m_ui->tableView_2->setModel(m_filterItemTableProxyModel);
+  m_ui->tableView_2->setModel(m_filterTableProxyModel);
   m_ui->tableView_2->setAlternatingRowColors(true);
   m_ui->tableView_2->setSortingEnabled(true);
   m_ui->tableView_2->sortByColumn(sortColumn, Qt::AscendingOrder);
@@ -676,30 +662,30 @@ m_ui(new Ui::MainWindow)
   m_ui->tableView_2->update();
   m_ui->tableView_2->show();
 
-  m_ui->listView->setModel(m_itemTableProxyModel);
+  m_ui->listView->setModel(m_TableProxyModel);
   m_ui->listView->setModelColumn(0);
   m_ui->listView->update();
   m_ui->listView->show();
 
-  m_ui->listView_2->setModel(m_itemTableProxyModel);
+  m_ui->listView_2->setModel(m_TableProxyModel);
   m_ui->listView_2->setModelColumn(1);
   m_ui->listView_2->update();
   m_ui->listView_2->show();
 
-  m_ui->listView_3->setModel(m_itemTableProxyModel);
+  m_ui->listView_3->setModel(m_TableProxyModel);
   m_ui->listView_3->setModelColumn(2);
   m_ui->listView_3->update();
   m_ui->listView_3->show();
 
   if(!isDisconnected) {
-    m_timer = new QTimer;
-    m_timer->setSingleShot(true);
+    m_fetchDelayTimer = new QTimer;
+    m_fetchDelayTimer->setSingleShot(true);
     // imitate remote load delay
-    m_timer->start(1000);
-    QObject::connect(m_timer, &QTimer::timeout, [this](){
+    m_fetchDelayTimer->start(1000);
+    QObject::connect(m_fetchDelayTimer, &QTimer::timeout, [this](){
         FilterSettings filterSettings;
-        filterSettings.filterRegExp = m_filterItemTableProxyModel->filterRegExp();
-        filterSettings.filterCaseSensitivity = m_filterItemTableProxyModel->filterCaseSensitivity();
+        filterSettings.filterRegExp = m_filterTableProxyModel->filterRegExp();
+        filterSettings.filterCaseSensitivity = m_filterTableProxyModel->filterCaseSensitivity();
 
         const int requestPageNum = 3;
 
@@ -707,7 +693,7 @@ m_ui(new Ui::MainWindow)
         onDataFetched(lastFetchedData->requestedPageNum, lastFetchedData);
         onRowRangeChanged(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize, lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
 
-        m_pagedItemMapper->setCurrentIndex(requestPageNum);
+        m_paginationMapper->setCurrentIndex(requestPageNum);
     });
   }
 
@@ -716,23 +702,21 @@ m_ui(new Ui::MainWindow)
 #if defined(QT_TESTLIB_LIB) && QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
   if (enableAbstractItemModelTester) {
     new QAbstractItemModelTester(m_itemListModelCache.get(), QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    new QAbstractItemModelTester(m_filterItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    new QAbstractItemModelTester(m_pagedItemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    new QAbstractItemModelTester(m_pagedItemListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
-    new QAbstractItemModelTester(m_itemTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_filterTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_pagedTableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_pagedListProxyFilterModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
+    new QAbstractItemModelTester(m_TableProxyModel, QAbstractItemModelTester::FailureReportingMode::Fatal, this);
   }
 #endif
 
 #endif // QT_DEBUG
-
-
 }
 
 void MainWindow::onRowRangeChanged(int first, int last) {
   //m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize);
   //m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(lastFetchedData->requestedPageNum*lastFetchedData->requestedPageSize+lastFetchedData->requestedPageSize);
-  m_pagedItemTableProxyModel->setFilterMinSourceRowIndex(first);
-  m_pagedItemTableProxyModel->setFilterMaxSourceRowIndex(last);
+  m_pagedTableProxyModel->setFilterMinSourceRowIndex(first);
+  m_pagedTableProxyModel->setFilterMaxSourceRowIndex(last);
 }
 
 void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPageData> data) {
@@ -742,28 +726,28 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
   if (data) {
     pagesTotal = data->totalPages;
 
-    m_pagedItemListProxyFilterModel->setPagesTotal(pagesTotal);
-    m_pagedItemListProxyFilterModel->setPageSize(data->requestedPageSize);
+    m_pagedListProxyFilterModel->setPagesTotal(pagesTotal);
+    m_pagedListProxyFilterModel->setPageSize(data->requestedPageSize);
 
     if (data->totalPages <= 0) {
       m_ui->prevButton->setEnabled(false);
       m_ui->nextButton->setEnabled(false);
     }
   } else { // can`t load remote data, go into offline mode
-    m_pagedItemListProxyFilterModel->setPagesTotal(-1);
-    m_pagedItemListProxyFilterModel->setPageSize(kItemsPerPage);
+    m_pagedListProxyFilterModel->setPagesTotal(-1);
+    m_pagedListProxyFilterModel->setPageSize(kItemsPerPage);
 
     // Invalidates the current sorting and filtering.
-    m_filterItemTableProxyModel->invalidate();
-    m_pagedItemTableProxyModel->invalidate();
+    m_filterTableProxyModel->invalidate();
+    m_pagedTableProxyModel->invalidate();
 
     if (kItemsPerPage != 0) {
-      std::div_t res = std::div(m_filterItemTableProxyModel->rowCount(), kItemsPerPage);
+      std::div_t res = std::div(m_filterTableProxyModel->rowCount(), kItemsPerPage);
       // Fast ceiling of an integer division
       pagesTotal = res.rem ? (res.quot + 1) : res.quot;
     }
 
-    m_pagedItemListProxyFilterModel->setPagesTotal(pagesTotal);
+    m_pagedListProxyFilterModel->setPagesTotal(pagesTotal);
   }
 
   if (pagesTotal <= 0) {
@@ -774,9 +758,9 @@ void MainWindow::onDataFetched(int requestedPageNum, std::shared_ptr<fetchedPage
     m_ui->nextButton->setEnabled(pageNum < (pagesTotal - 1));
   }
 
-  if (m_pagedItemMapper->model()->rowCount() <= 0) {
+  if (m_paginationMapper->model()->rowCount() <= 0) {
     /// \note currentIndexChanged don`t work on mapper with zero pages
-    m_pagedItemWidget->clearContents();
+    m_pagedItemListWidget->clearContents();
   }
 }
 
@@ -787,8 +771,8 @@ void MainWindow::onMapperIndexChanged(int pageNum) {
 
 
   // Invalidates the current sorting and filtering.
-  m_filterItemTableProxyModel->invalidate();
-  m_pagedItemTableProxyModel->invalidate();
+  m_filterTableProxyModel->invalidate();
+  m_pagedTableProxyModel->invalidate();
 }
 
 MainWindow::~MainWindow()
