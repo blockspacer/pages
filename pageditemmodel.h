@@ -88,6 +88,9 @@ public:
     m_item.setName(sString);
 
     QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
+    if(!indexItem.isValid()) {
+      return;
+    }
     emit dataChanged(indexItem, indexItem);
   }
 
@@ -100,6 +103,9 @@ public:
 
     // need to emit dataChanged with any column
     QModelIndex indexItem = index(0, static_cast<int>(Columns::Name));
+    if(!indexItem.isValid()) {
+      return;
+    }
     emit dataChanged(indexItem, indexItem);
   }
 
@@ -111,6 +117,9 @@ public:
     m_item.setSurname(sString);
 
     QModelIndex indexItem = index(0, static_cast<int>(Columns::Surname));
+    if(!indexItem.isValid()) {
+      return;
+    }
     emit dataChanged(indexItem, indexItem);
   }
 
@@ -125,6 +134,9 @@ public:
     emit guidChanged(prevGUID, m_item.getGUID());
 
     QModelIndex indexItem = index(0, static_cast<int>(Columns::GUID));
+    if(!indexItem.isValid()) {
+      return;
+    }
     emit dataChanged(indexItem, indexItem);
   }
 
@@ -326,12 +338,11 @@ public:
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    /*if (!index.isValid()) {
-      return Qt::ItemIsEnabled;
+    if (!index.isValid()) {
+      return 0;
     }
 
-    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;*/
-    return 0;
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
   }
 
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -424,6 +435,9 @@ public:
 
     const int itemRowId = oldRows + 1;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
+    if(!indexMapped.isValid()) {
+      return;
+    }
 
     if (item) {
       connect(item->model(), &QAbstractItemModel::dataChanged, this, [this, indexMapped](const QModelIndex first, QModelIndex last) {
@@ -572,6 +586,10 @@ public:
 
     const int itemRowId = rowIndex;
     const QModelIndex indexMapped = index(itemRowId, static_cast<int>(Columns::Item));
+    if(!indexMapped.isValid()) {
+      return false;
+    }
+
     emit dataChanged(indexMapped, indexMapped);
 
     const int newRowCount = itemsTotal();
@@ -869,10 +887,22 @@ protected:
 
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
     QModelIndex res;
-    if(!proxyIndex.isValid())
-    {
+    if (!proxyIndex.isValid()) {
       return res;
     }
+
+    Q_ASSERT(proxyIndex.column() >=0 && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1));
+
+    /*switch(proxyIndex.column())
+    {
+      case static_cast<int>(ItemListModel::Columns::Item):
+        //res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
+        res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
+        break;
+      default:
+        res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
+        break;
+    }*/
 
     if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1))
     {
@@ -886,14 +916,15 @@ protected:
 
   QModelIndex mapFromSource(const QModelIndex &sourceIndex) const Q_DECL_OVERRIDE {
     QModelIndex res;
+    //res = index(sourceIndex.row(), static_cast<int>(ItemListModel::Columns::Item));
     res = index(sourceIndex.row(), sourceIndex.column());
     return res;
   }
 
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    /*if (!index.isValid()) {
-      return Qt::ItemIsEnabled;
+    if (!index.isValid()) {
+      return 0;
     }
 
    Qt::ItemFlags res;
@@ -904,9 +935,7 @@ protected:
    } else {
       res = sourceModel()->flags(mapToSource(index));
    }
-   return res;*/
-   //return QAbstractProxyModel::flags(index);
-   return 0;
+   return res;
   }
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -974,7 +1003,7 @@ public:
 
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE {
       Q_UNUSED(parent);
-      return static_cast<int>(ItemTableProxyModel::Columns::Total);
+      return sourceModel()->columnCount();///static_cast<int>(ItemTableProxyModel::Columns::Total);
     }
 
 protected:
@@ -1082,18 +1111,13 @@ public:
 protected:
 
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const Q_DECL_OVERRIDE {
-    qDebug() << "filterAcceptsRow";
-        /*if (!sourceParent.isValid()) {
-          return false;
-        }*/
-
-        /*if (sourceRow < 0 || sourceRow >= sourceModel()->rowCount()) {
-          return false;
-        }*/
-
         const QRegExp& regexp = filterRegExp();
 
         const QModelIndex& indexItemMode = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::ItemMode), sourceParent);
+        if(!indexItemMode.isValid()) {
+          return false;
+        }
+
         const ItemModel::ItemMode& itemMode = static_cast<ItemModel::ItemMode>(sourceModel()->data(indexItemMode).toInt());
         //qDebug() << "ItemMode" << sourceModel()->data(indexItemMode);
         const bool isNotLoaded = itemMode == ItemModel::ItemMode::NotLoaded;
@@ -1106,13 +1130,16 @@ protected:
 
         bool anyFieldMatch = true;
         if(!filterPattern.isEmpty()) {
-          const QModelIndex &indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
-          const QString& name = sourceModel()->data(indexName).toString();
+          const QModelIndex &indexfilterColumn = sourceModel()->index(sourceRow, this->filterKeyColumn(), sourceParent);
+          if(!indexfilterColumn.isValid()) {
+            return false;
+          }
+          const QString& filterColumnData = sourceModel()->data(indexfilterColumn).toString();
           //const bool isNameFiltered = name.contains(filterPattern, filterCaseSensitivity());
 
           // indexIn attempts to find a match in str from position offset (0 by default).
           // Returns the position of the first match, or -1 if there was no match.
-          const bool isNameFiltered = regexp.indexIn(name) != -1;
+          const bool isNameFiltered = regexp.indexIn(filterColumnData) != -1;
           anyFieldMatch = (isNameFiltered
                 //|| isSurnameFiltered
                 );
@@ -1132,13 +1159,6 @@ protected:
 
         if (isSkippingNotLoaded()) {
           needSkip = !isNotLoaded && anyFieldMatch;
-        }
-
-        // DEBUG ONLY TODO REMOVE
-         {
-          const QModelIndex &indexName = sourceModel()->index(sourceRow, static_cast<int>(ItemModel::Columns::Name), sourceParent);
-          const QString& name = sourceModel()->data(indexName).toString();
-          qDebug() << "needSkip for " << name << needSkip;
         }
 
         return needSkip;
@@ -1380,6 +1400,9 @@ protected:
     for (int i = pageStartCursor; i < pageStartCursor + getPageSize(); i++) {
       //QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemModel::Columns::GUID));
       QModelIndex idx = pagedItemTableProxyFilterModel->index(i, static_cast<int>(ItemTableProxyModel::Columns::SourceMappedRowNum));
+      if(!idx.isValid()) {
+        return false;
+      }
       QVariant data = pagedItemTableProxyFilterModel->data(idx, Qt::DisplayRole);
 
       /*{
@@ -1450,17 +1473,22 @@ protected:
   QModelIndex mapToSource(const QModelIndex &proxyIndex)  const Q_DECL_OVERRIDE {
     QModelIndex res;
 
-    if(!proxyIndex.isValid())
-    {
+    if (!proxyIndex.isValid()) {
       return res;
     }
+
+    Q_ASSERT(proxyIndex.column() >=0 && proxyIndex.column() <= sourceModel()->columnCount());
+
+    res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
+
+    /*Q_ASSERT(proxyIndex.column() >=0 && proxyIndex.column() <= (static_cast<int>(ItemModel::Columns::Total) - 1));
 
     if(proxyIndex.column() >= sourceModel()->columnCount() && proxyIndex.column() <= (static_cast<int>(ItemTableProxyModel::Columns::Total) - 1))
     {
        res = createIndex(proxyIndex.row(), proxyIndex.column(), static_cast<quintptr>(-1));
     } else {
        res = sourceModel()->index(proxyIndex.row(), proxyIndex.column());
-    }
+    }*/
 
     return res;
   }
@@ -1471,11 +1499,16 @@ protected:
     return res;
   }
 
+  bool canFetchMore(const QModelIndex & index) const Q_DECL_OVERRIDE
+  {
+    Q_UNUSED(index);
+    return false;
+  }
+
   Qt::ItemFlags flags(const QModelIndex &index) const Q_DECL_OVERRIDE
   {
-    return 0;
-    /*if (!index.isValid()) {
-      return Qt::ItemIsEnabled;
+    if (!index.isValid()) {
+      return 0;
     }
 
    Qt::ItemFlags res;
@@ -1486,7 +1519,7 @@ protected:
    } else {
       res = sourceModel()->flags(mapToSource(index));
    }
-   return res;*/
+   return res;
   }
 
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE {
@@ -1503,7 +1536,6 @@ protected:
 
 private:
   int m_pageSize = 1;
-  //WorkMode m_workMode = WorkMode::Total;
   int m_onlinePagesTotal = -1;
 
   ItemListModel* m_extraDataSource;

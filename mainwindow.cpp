@@ -220,6 +220,7 @@ m_ui(new Ui::MainWindow)
   // dynamicSortFilter ensures that the model is sorted and filtered whenever
   // the contents of the source model change.
   m_filterItemTableProxyModel->setDynamicSortFilter(true);
+  m_filterItemTableProxyModel->setFilterKeyColumn(static_cast<int>(ItemModel::Columns::Name));
 
   m_pagedItemTableProxyModel = new PagedItemTableProxyFilterModel();
 

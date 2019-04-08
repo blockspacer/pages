@@ -22,7 +22,7 @@ void ItemTableProxyModel::sourceReset()
 void ItemTableProxyModel::slotDataChanged(const QModelIndex& first, const QModelIndex& last)
 {
   // TODO
-  //emit dataChanged(mapFromSource(first), mapFromSource(last));
+  emit dataChanged(mapFromSource(first), mapFromSource(last));
   sourceReset();
 }
 
@@ -90,7 +90,7 @@ void PagedItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, c
 {
   qDebug() << "slotDataChanged";
   // TODO
-  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  //emit dataChanged(mapFromSource(first), mapFromSource(last));
   sourceReset();
 }
 
@@ -161,7 +161,7 @@ void ItemTableProxyFilterModel::slotDataChanged(const QModelIndex& first, const 
 {
   qDebug() << "slotDataChanged";
   // TODO
-  emit dataChanged(mapFromSource(first), mapFromSource(last));
+  //emit dataChanged(mapFromSource(first), mapFromSource(last));
   sourceReset();
 }
 
